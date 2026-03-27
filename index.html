@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FOOTBALL RUNNER 21</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { 
+    background:#0a0a1f; 
+    overflow:hidden; 
+    height:100dvh; 
+    font-family:'Courier New', monospace; 
+    touch-action:none; 
+  }
+  #game { position:relative; width:100vw; height:100dvh; }
+  canvas { display:block; }
+
+  #hud {
+    position:absolute; top:15px; left:0; right:0; padding:0 20px; z-index:30;
+    color:#ffd700; font-size:18px; display:flex; justify-content:space-between;
+    text-shadow: 0 0 8px #000, 2px 2px 0 #000;
+    font-weight: bold;
+  }
+  .controls {
+    position:absolute; bottom:30px; left:0; right:0; 
+    display:flex; justify-content:space-between; padding:0 25px;
+    pointer-events:none;
+  }
+  button {
+    width:85px; height:85px; 
+    background:rgba(255,215,0,0.18); 
+    border:5px solid #ffd700;
+    color:#ffd700; 
+    font-size:36px; 
+    font-weight:bold; 
+    border-radius:22px;
+    box-shadow:0 10px 0 #000;
+    pointer-events:auto;
+  }
+  button:active { 
+    transform:translateY(6px); 
+    box-shadow:0 3px 0 #000; 
+  }
+</style>
+</head>
+<body>
+
+<div id="game">
+  <canvas id="canvas"></canvas>
+
+  <div id="hud">
+    <div>STAGE <span id="stage">1</span> • LV <span id="level">1</span></div>
+    <div><span id="yards">0</span> / <span id="goal">100</span> YDS</div>
+  </div>
+
+  <div class="controls">
+    <div style="display:grid; grid-template-columns:repeat(3,85px); gap:6px;">
+      <div></div>
+      <button id="up">▲</button>
+      <div></div>
+      <button id="left">◀</button>
+      <button id="down">▼</button>
+      <button id="right">▶</button>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(2,85px); gap:14px;">
+      <button id="y" style="border-color:#ff5722;">Y</button>
+      <button id="x" style="border-color:#2196f3;">X</button>
+      <button id="b" style="border-color:#fbc02d;">B</button>
+      <button id="a" style="border-color:#4caf50;">A</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from "https://esm.sh/three@0.177.0";
+
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a1f3a);
+scene.fog = new THREE.Fog(0x0a1f3a, 35, 130);
+
+const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 300);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+const sun = new THREE.DirectionalLight(0xffdd88, 1.1);
+sun.position.set(15, 30, 18);
+scene.add(sun);
+
+// Ground
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(42, 900),
+  new THREE.MeshLambertMaterial({ color: 0x1b5e20 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.z = -220;
+scene.add(ground);
+
+// Your player - using assets/front_1.png
+let playerMesh = null;
+
+async function loadPlayer() {
+  try {
+    const loader = new THREE.TextureLoader();
+    const texture = await loader.loadAsync('assets/front_1.png');   // ← Your exact file name
+
+    texture.magFilter = THREE.NearestFilter;
+
+    const geo = new THREE.PlaneGeometry(8.5, 13.2);
+    const mat = new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      side: THREE.DoubleSide,
+      alphaTest: 0.08
+    });
+
+    playerMesh = new THREE.Mesh(geo, mat);
+    playerMesh.position.set(0, 6.8, 0);
+    scene.add(playerMesh);
+    console.log("Player loaded successfully from assets/front_1.png");
+  } catch (e) {
+    console.warn("Could not load assets/front_1.png - using placeholder");
+    const geo = new THREE.CapsuleGeometry(1.8, 5.5, 8, 16);
+    const mat = new THREE.MeshLambertMaterial({ color: 0x1e88e5 });
+    playerMesh = new THREE.Mesh(geo, mat);
+    playerMesh.position.set(0, 6, 0);
+    scene.add(playerMesh);
+  }
+}
+
+let speed = 24;
+let lane = 0;
+let yards = 0;
+let isTurbo = false;
+
+function gameLoop() {
+  const dt = 0.016;
+
+  if (playerMesh) {
+    const currentSpeed = isTurbo ? speed * 1.7 : speed;
+    playerMesh.position.z -= currentSpeed * dt;
+    yards += currentSpeed * dt * 0.8;
+
+    const targetX = lane * 6.2;
+    playerMesh.position.x += (targetX - playerMesh.position.x) * 0.25;
+  }
+
+  document.getElementById('yards').textContent = Math.floor(yards);
+
+  // Madden chase camera - behind the runner
+  if (playerMesh) {
+    camera.position.x += (playerMesh.position.x * 0.25 - camera.position.x) * 0.12;
+    camera.position.y = 19 + (isTurbo ? 5 : 0);
+    camera.position.z = playerMesh.position.z + 36;
+
+    camera.lookAt(playerMesh.position.x * 0.4, 6.5, playerMesh.position.z - 16);
+  }
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(gameLoop);
+}
+
+// Controls
+document.getElementById('left').addEventListener('touchstart', e => { 
+  e.preventDefault(); 
+  lane = Math.max(-2, lane - 1); 
+});
+
+document.getElementById('right').addEventListener('touchstart', e => { 
+  e.preventDefault(); 
+  lane = Math.min(2, lane + 1); 
+});
+
+document.getElementById('y').addEventListener('touchstart', e => { 
+  e.preventDefault(); 
+  isTurbo = true; 
+});
+
+document.getElementById('y').addEventListener('touchend', () => isTurbo = false);
+
+document.getElementById('a').addEventListener('touchstart', e => { e.preventDefault(); });
+document.getElementById('b').addEventListener('touchstart', e => { e.preventDefault(); });
+document.getElementById('x').addEventListener('touchstart', e => { e.preventDefault(); });
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+loadPlayer();
+gameLoop();
+</script>
+</body>
+</html>
