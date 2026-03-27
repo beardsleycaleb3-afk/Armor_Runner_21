@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ARMOR RUNNER 21</title>
+<style>
+body { 
+  margin:0; 
+  overflow:hidden; 
+  background:#111; 
+  height:100dvh; 
+  font-family:'Courier New', monospace;
+  touch-action:none; 
+  user-select:none;
+  display:flex; 
+  justify-content:center; 
+  align-items:center;
+}
+
+.console-border {
+  position:relative;
+  width: 100%;
+  height: 100%;
+  max-width: 600px;
+  max-height: 900px;
+  background: linear-gradient(135deg, #2a0033 0%, #000 100%);
+  display:flex; 
+  flex-direction:column; 
+  align-items:center;
+  box-shadow: 0 0 30px #000;
+}
+
+.monitor {
+  position: relative;
+  margin-top: 20px;
+  width: 370px;
+  height: 370px;
+  background: #000;
+  border: 20px solid #ff6600;
+  border-radius: 5px;
+  display:flex; 
+  justify-content:center; 
+  align-items:center;
+  box-shadow: 0 0 20px #ff6600, inset 0 0 30px rgba(0,0,0,0.9);
+  overflow: hidden;
+}
+
+#gameScreenCtn {
+  position: relative;
+  width: 350px;
+  height: 350px;
+  background: #87CEEB;
+  overflow: hidden;
+}
+
+.scanlines {
+  position:absolute; inset:0; 
+  background:linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.15) 50%);
+  background-size:100% 4px; 
+  pointer-events:none; 
+  z-index:5;
+}
+
+.controls-area {
+  flex:1; 
+  width:100%; 
+  max-width:400px;
+  border: 20px solid #ff6600; 
+  border-top:none;
+  display:flex; 
+  justify-content:space-between; 
+  align-items:flex-end; 
+  padding:0 20px 20px 20px;
+  background:#111;
+}
+
+.dpad-btn, .action-btn {
+  background:#333; 
+  border:2px solid #555; 
+  box-shadow:0 4px 0 #000; 
+  cursor:pointer;
+  display:flex; 
+  align-items:center; 
+  justify-content:center; 
+  color:#ccc; 
+  font-size:24px;
+  width:48px; 
+  height:48px;
+}
+.dpad-btn:active, .action-btn:active { 
+  background:#555; 
+  transform:translateY(2px); 
+  box-shadow:0 0 0 #000; 
+}
+
+.action-btn { border-radius:50%; font-weight:bold; }
+.btn-y { background:#d32f2f !important; }
+.btn-x { background:#1976d2 !important; }
+.btn-b { background:#fbc02d !important; color:#000; }
+.btn-a { background:#388e3c !important; }
+</style>
+</head>
+<body>
+
+<div class="console-border">
+  <div class="monitor">
+    <div id="gameScreenCtn">
+      <canvas id="gameCanvasEl" width="350" height="350"></canvas>
+      <div class="scanlines"></div>
+    </div>
+  </div>
+
+  <div class="controls-area">
+    <div style="display:grid; grid-template-columns:repeat(3,52px); gap:8px;">
+      <div></div>
+      <div class="dpad-btn" id="btnUp">▲</div>
+      <div></div>
+      <div class="dpad-btn" id="btnLeft">◀</div>
+      <div class="dpad-btn" id="btnDown">▼</div>
+      <div class="dpad-btn" id="btnRight">▶</div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(2,52px); gap:12px;">
+      <div class="action-btn btn-y" id="btnY">Y</div>
+      <div class="action-btn btn-x" id="btnX">X</div>
+      <div class="action-btn btn-b" id="btnB">B</div>
+      <div class="action-btn btn-a" id="btnA">A</div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from "https://esm.sh/three@0.177.0";
+
+const canvas = document.getElementById('gameCanvasEl');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87CEEB);
+
+const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 200);
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(350, 350);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.85));
+const sun = new THREE.DirectionalLight(0xffffff, 0.7);
+sun.position.set(10, 25, 15);
+scene.add(sun);
+
+// Ground
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(25, 500),
+  new THREE.MeshLambertMaterial({ color: 0x166534 })
+);
+ground.rotation.x = -Math.PI/2;
+ground.position.z = -150;
+scene.add(ground);
+
+// Player - using your front_1.png
+let playerMesh = null;
+
+async function loadPlayer() {
+  try {
+    const loader = new THREE.TextureLoader();
+    const texture = await loader.loadAsync('assets/front_1.png');
+    texture.magFilter = THREE.NearestFilter;
+
+    const geo = new THREE.PlaneGeometry(8.5, 13);
+    const mat = new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      side: THREE.DoubleSide,
+      alphaTest: 0.1
+    });
+
+    playerMesh = new THREE.Mesh(geo, mat);
+    playerMesh.position.set(0, 6.5, 0);
+    scene.add(playerMesh);
+  } catch (e) {
+    // fallback
+    const geo = new THREE.CapsuleGeometry(1.2, 3.5, 8, 16);
+    const mat = new THREE.MeshLambertMaterial({ color: 0x1e88e5 });
+    playerMesh = new THREE.Mesh(geo, mat);
+    playerMesh.position.set(0, 3, 0);
+    scene.add(playerMesh);
+  }
+}
+
+// Game variables
+let lane = 0;
+let speed = 20;
+let yards = 0;
+let isTurbo = false;
+
+// Simple skill states
+let isSpinning = false;
+let isPlowing = false;
+
+function gameLoop() {
+  const dt = 0.016;
+  const currentSpeed = isTurbo ? speed * 1.8 : speed;
+
+  if (playerMesh) {
+    playerMesh.position.z -= currentSpeed * dt;
+    yards += currentSpeed * dt * 0.7;
+
+    const targetX = lane * 3.5;
+    playerMesh.position.x += (targetX - playerMesh.position.x) * 0.25;
+  }
+
+  document.getElementById('yards').textContent = Math.floor(yards) || 0;  // if you add HUD later
+
+  // Camera - behind the runner (Madden style)
+  if (playerMesh) {
+    camera.position.set(0, 9, playerMesh.position.z + 14);
+    camera.lookAt(playerMesh.position.x, 4, playerMesh.position.z - 10);
+  }
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(gameLoop);
+}
+
+// Controls - your original mapping
+document.getElementById('btnLeft').addEventListener('touchstart', e => {
+  e.preventDefault();
+  lane = Math.max(-2, lane - 1);
+});
+
+document.getElementById('btnRight').addEventListener('touchstart', e => {
+  e.preventDefault();
+  lane = Math.min(2, lane + 1);
+});
+
+document.getElementById('btnY').addEventListener('touchstart', e => {
+  e.preventDefault();
+  isTurbo = true;
+});
+
+document.getElementById('btnY').addEventListener('touchend', () => {
+  isTurbo = false;
+});
+
+document.getElementById('btnA').addEventListener('touchstart', e => {
+  e.preventDefault();
+  isSpinning = true;
+  setTimeout(() => isSpinning = false, 500);
+});
+
+document.getElementById('btnB').addEventListener('touchstart', e => {
+  e.preventDefault();
+  isPlowing = true;
+  setTimeout(() => isPlowing = false, 700);
+});
+
+document.getElementById('btnX').addEventListener('touchstart', e => {
+  e.preventDefault();
+  // Hurdle - simple jump for now
+  if (playerMesh) playerMesh.position.y = 5;
+  setTimeout(() => { if (playerMesh) playerMesh.position.y = 3.5; }, 400);
+});
+
+loadPlayer();
+gameLoop();
+</script>
+</body>
+</html>
