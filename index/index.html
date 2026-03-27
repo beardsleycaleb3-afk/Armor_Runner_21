@@ -1,106 +1,84 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>ARMOR RUNNER 21</title>
-  <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body {
-      background: #0a0a0a;
-      color: #0ff;
-      font-family: 'Courier New', monospace;
-      overflow: hidden;
-      height: 100dvh;
-      touch-action: none;
-    }
-    #gameContainer {
-      position: relative;
-      width: 100vw;
-      height: 100dvh;
-      background: linear-gradient(#0a1f3a, #000);
-    }
-    canvas {
-      display: block;
-      width: 100%;
-      height: 100%;
-      image-rendering: pixelated; /* optional retro feel */
-    }
-    /* Mobile Controls - Large & Thumb Friendly */
-    .controls {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      height: 220px;
-      display: flex;
-      justify-content: space-between;
-      padding: 20px;
-      pointer-events: none;
-    }
-    .dpad, .actions {
-      pointer-events: auto;
-    }
-    .dpad button, .actions button {
-      width: 70px;
-      height: 70px;
-      margin: 5px;
-      background: rgba(0, 255, 255, 0.15);
-      border: 3px solid #0ff;
-      color: #0ff;
-      font-size: 24px;
-      border-radius: 12px;
-      backdrop-filter: blur(8px);
-      box-shadow: 0 4px 0 #000;
-    }
-    .dpad button:active, .actions button:active {
-      transform: translateY(4px);
-      box-shadow: 0 0 0 #000;
-    }
-    #hud {
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      padding: 15px;
-      display: flex;
-      justify-content: space-between;
-      color: #0ff;
-      text-shadow: 0 0 10px #0ff;
-      font-size: 14px;
-      z-index: 10;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FOOTBALL RPG RUNNER 21</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { 
+    background:#0a0a1f; 
+    overflow:hidden; 
+    height:100dvh; 
+    font-family:'Courier New', monospace; 
+    touch-action:none; 
+  }
+  #game { position:relative; width:100vw; height:100dvh; }
+  canvas { display:block; }
+
+  #hud {
+    position:absolute; top:15px; left:0; right:0; padding:0 20px; z-index:30;
+    color:#ffd700; font-size:18px; display:flex; justify-content:space-between;
+    text-shadow: 0 0 8px #000, 2px 2px 0 #000;
+    font-weight: bold;
+  }
+  .controls {
+    position:absolute; bottom:30px; left:0; right:0; 
+    display:flex; justify-content:space-between; padding:0 25px;
+    pointer-events:none;
+  }
+  button {
+    width:85px; height:85px; 
+    background:rgba(255,215,0,0.18); 
+    border:5px solid #ffd700;
+    color:#ffd700; 
+    font-size:36px; 
+    font-weight:bold; 
+    border-radius:22px;
+    box-shadow:0 10px 0 #000;
+    pointer-events:auto;
+  }
+  button:active { 
+    transform:translateY(6px); 
+    box-shadow:0 3px 0 #000; 
+  }
+  #msg {
+    position:absolute; top:60px; left:50%; transform:translateX(-50%);
+    color:#ffeb3b; font-size:22px; font-weight:bold;
+    text-shadow: 3px 3px 0 #000; opacity:0; transition:opacity 0.4s;
+    z-index:40;
+  }
+</style>
 </head>
 <body>
 
-<div id="gameContainer">
-  <canvas id="gameCanvas"></canvas>
-  
-  <!-- HUD -->
+<div id="game">
+  <canvas id="canvas"></canvas>
+
   <div id="hud">
-    <div>STAGE <span id="stageNum">1</span> • LV <span id="levelNum">1</span></div>
+    <div>STAGE <span id="stage">1</span> • LV <span id="level">1</span></div>
     <div><span id="yards">0</span> / <span id="goal">100</span> YDS</div>
   </div>
 
-  <!-- Mobile Controls -->
+  <div id="msg"></div>
+
   <div class="controls">
     <!-- D-Pad -->
-    <div class="dpad">
-      <div style="display:grid; grid-template-columns:repeat(3,70px); gap:5px;">
-        <div></div>
-        <button id="btnUp">▲</button>
-        <div></div>
-        <button id="btnLeft">◀</button>
-        <button id="btnDown">▼</button>
-        <button id="btnRight">▶</button>
-      </div>
+    <div style="display:grid; grid-template-columns:repeat(3,85px); gap:6px;">
+      <div></div>
+      <button id="up">▲</button>
+      <div></div>
+      <button id="left">◀</button>
+      <button id="down">▼</button>
+      <button id="right">▶</button>
     </div>
 
     <!-- Action Buttons -->
-    <div class="actions" style="display:grid; grid-template-columns:repeat(2,1fr); gap:15px;">
-      <button id="btnY" style="background:rgba(255,60,60,0.2); border-color:#f66;">Y<br><small>TURBO</small></button>
-      <button id="btnX" style="background:rgba(60,120,255,0.2); border-color:#6cf;">X<br><small>HURDLE</small></button>
-      <button id="btnB" style="background:rgba(255,200,60,0.2); border-color:#fc6;">B<br><small>PLOW</small></button>
-      <button id="btnA" style="background:rgba(60,255,100,0.2); border-color:#6f6;">A<br><small>SPIN</small></button>
+    <div style="display:grid; grid-template-columns:repeat(2,85px); gap:14px;">
+      <button id="y" style="border-color:#ff5722;">Y</button>
+      <button id="x" style="border-color:#2196f3;">X</button>
+      <button id="b" style="border-color:#fbc02d;">B</button>
+      <button id="a" style="border-color:#4caf50;">A</button>
     </div>
   </div>
 </div>
@@ -108,95 +86,192 @@
 <script type="module">
 import * as THREE from "https://esm.sh/three@0.177.0";
 
-// Your hero image as player texture
-const HERO_URL = "assets/hero/1.png";   // ← Put your image here
+const canvas = document.getElementById('canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
 
-let scene, camera, renderer, player;
-let playerMesh;
-const obstacles = [];
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a1f3a);
+scene.fog = new THREE.Fog(0x0a1f3a, 30, 120);
 
-async function init() {
-  const canvas = document.getElementById('gameCanvas');
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+const camera = new THREE.PerspectiveCamera(68, window.innerWidth / window.innerHeight, 0.1, 300);
+camera.position.set(0, 14, 26);
 
-  scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0x0a1f3a, 30, 120);
+scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+const sun = new THREE.DirectionalLight(0xffdd88, 1.1);
+sun.position.set(15, 30, 18);
+scene.add(sun);
 
-  camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 200);
-  camera.position.set(0, 8, 15);
+// Ground (football field style)
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(42, 900),
+  new THREE.MeshLambertMaterial({ color: 0x1b5e20 })
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.z = -220;
+scene.add(ground);
 
-  // Lights
-  scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-  const sun = new THREE.DirectionalLight(0x88ccff, 1.2);
-  sun.position.set(10, 20, 15);
-  scene.add(sun);
+// Player using sprite sheet
+let playerMesh = null;
+let currentFrame = 0;
+let animRow = 0;        // 0=idle, 1=run, 2=jump/hurdle, 3=spin, 4=plow, 5=slide, 6=hit
+const COLS = 8;
+const ROWS = 8;
 
-  // Create futuristic ground
-  const groundGeo = new THREE.PlaneGeometry(40, 400);
-  const groundMat = new THREE.MeshLambertMaterial({ color: 0x112233 });
-  const ground = new THREE.Mesh(groundGeo, groundMat);
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.z = -80;
-  scene.add(ground);
+async function loadPlayer() {
+  try {
+    const loader = new THREE.TextureLoader();
+    const texture = await loader.loadAsync('assets/player/player_spritesheet.png');
+    
+    texture.magFilter = THREE.NearestFilter;
+    texture.minFilter = THREE.NearestFilter;
 
-  // Load your armored player as sprite / plane with texture
-  const textureLoader = new THREE.TextureLoader();
-  const heroTex = await textureLoader.loadAsync(HERO_URL);
-  
-  const playerGeo = new THREE.PlaneGeometry(4, 6); // tall armored figure
-  const playerMat = new THREE.MeshBasicMaterial({ 
-    map: heroTex, 
-    transparent: true, 
-    side: THREE.DoubleSide 
-  });
-  
-  playerMesh = new THREE.Mesh(playerGeo, playerMat);
-  playerMesh.position.set(0, 3, 0);
-  scene.add(playerMesh);
+    const geo = new THREE.PlaneGeometry(8, 12);
+    const mat = new THREE.MeshBasicMaterial({
+      map: texture,
+      transparent: true,
+      side: THREE.DoubleSide,
+      alphaTest: 0.1
+    });
 
-  // Start game loop
-  requestAnimationFrame(gameLoop);
+    playerMesh = new THREE.Mesh(geo, mat);
+    playerMesh.position.set(0, 6, 0);
+    scene.add(playerMesh);
+    
+    console.log("Player sprite loaded successfully");
+  } catch (e) {
+    console.warn("Sprite sheet not found yet. Using placeholder player.");
+    // Placeholder capsule player (so you can test without sprite sheet)
+    const geo = new THREE.CapsuleGeometry(1.8, 5, 8, 16);
+    const mat = new THREE.MeshLambertMaterial({ color: 0x1e88e5 });
+    playerMesh = new THREE.Mesh(geo, mat);
+    playerMesh.position.set(0, 5, 0);
+    scene.add(playerMesh);
+  }
 }
 
-let speed = 0;
+// Game variables
+let speed = 24;
+let lane = 0;           // -2 to 2
+let yards = 0;
+let isTurbo = false;
+let msgTimeout = null;
+
+function showMessage(text) {
+  const msgEl = document.getElementById('msg');
+  msgEl.textContent = text;
+  msgEl.style.opacity = 1;
+  clearTimeout(msgTimeout);
+  msgTimeout = setTimeout(() => msgEl.style.opacity = 0, 1200);
+}
+
+// Main game loop
 function gameLoop() {
-  // Basic forward movement
-  speed = 22 + Math.sin(Date.now()/300) * 2; // dynamic feel
+  const dt = 0.016;
+
   if (playerMesh) {
-    playerMesh.position.z -= speed * 0.016; // \~60fps simulation
+    // Forward movement
+    const currentSpeed = isTurbo ? speed * 1.6 : speed;
+    playerMesh.position.z -= currentSpeed * dt;
+    yards += currentSpeed * dt * 0.7;
+
+    // Smooth lane switching
+    const targetX = lane * 6;
+    playerMesh.position.x += (targetX - playerMesh.position.x) * 0.25;
+
+    // Running animation (if sprite sheet is loaded)
+    if (playerMesh.material.map) {
+      currentFrame = (currentFrame + (isTurbo ? 0.5 : 0.3)) % COLS;
+      animRow = 1; // running row
+      const u = (currentFrame % COLS) / COLS;
+      const v = animRow / ROWS;
+      playerMesh.material.map.offset.set(u, 1 - v - (1/ROWS));
+      playerMesh.material.map.repeat.set(1/COLS, 1/ROWS);
+    }
   }
 
-  // Camera follow (chase cam)
+  // Update HUD
+  document.getElementById('yards').textContent = Math.floor(yards);
+
+  // Camera follow (dynamic chase cam)
   if (playerMesh) {
-    camera.position.z = playerMesh.position.z + 18;
-    camera.lookAt(playerMesh.position.x, 4, playerMesh.position.z - 10);
+    camera.position.z = playerMesh.position.z + 27;
+    camera.lookAt(playerMesh.position.x, 7.5, playerMesh.position.z - 20);
   }
 
   renderer.render(scene, camera);
   requestAnimationFrame(gameLoop);
 }
 
-// Input handling (same button system as before, but bigger mobile friendly)
-document.querySelectorAll('button').forEach(btn => {
-  btn.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    console.log(btn.id + " pressed"); // replace with your game logic
-    // Example: btnY = turbo, btnA = spin, etc.
-  });
-  btn.addEventListener('touchend', (e) => e.preventDefault());
-});
+// Input handling
+function setupControls() {
+  const buttons = {
+    left: document.getElementById('left'),
+    right: document.getElementById('right'),
+    up: document.getElementById('up'),
+    down: document.getElementById('down'),
+    a: document.getElementById('a'),
+    b: document.getElementById('b'),
+    x: document.getElementById('x'),
+    y: document.getElementById('y')
+  };
 
-// Resize handler
+  Object.keys(buttons).forEach(key => {
+    const btn = buttons[key];
+    
+    btn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      
+      if (key === 'left') lane = Math.max(-2, lane - 1);
+      if (key === 'right') lane = Math.min(2, lane + 1);
+      
+      if (key === 'up' || key === 'x') {
+        showMessage("HURDLE!");
+        animRow = 2;
+      }
+      if (key === 'down') {
+        showMessage("SLIDE!");
+        animRow = 5;
+      }
+      if (key === 'a') {
+        showMessage("SPIN!");
+        animRow = 3;
+      }
+      if (key === 'b') {
+        showMessage("PLOW!");
+        animRow = 4;
+      }
+      if (key === 'y') {
+        isTurbo = true;
+        showMessage("TURBO!");
+      }
+
+      // Reset action animation after short time
+      setTimeout(() => {
+        if (animRow >= 2) animRow = 1;
+      }, 450);
+    });
+
+    if (key === 'y') {
+      btn.addEventListener('touchend', () => isTurbo = false);
+    }
+  });
+}
+
+// Handle resize
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-init();
-</script>
+// Start everything
+loadPlayer();
+setupControls();
+gameLoop();
 
+console.log("%cFOOTBALL RPG RUNNER 21 - Demo Ready", "color:#ffd700; font-size:16px");
+</script>
 </body>
 </html>
