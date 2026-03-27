@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ARMOR RUNNER 21</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      background: #0a0a0a;
+      color: #0ff;
+      font-family: 'Courier New', monospace;
+      overflow: hidden;
+      height: 100dvh;
+      touch-action: none;
+    }
+    #gameContainer {
+      position: relative;
+      width: 100vw;
+      height: 100dvh;
+      background: linear-gradient(#0a1f3a, #000);
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated; /* optional retro feel */
+    }
+    /* Mobile Controls - Large & Thumb Friendly */
+    .controls {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 220px;
+      display: flex;
+      justify-content: space-between;
+      padding: 20px;
+      pointer-events: none;
+    }
+    .dpad, .actions {
+      pointer-events: auto;
+    }
+    .dpad button, .actions button {
+      width: 70px;
+      height: 70px;
+      margin: 5px;
+      background: rgba(0, 255, 255, 0.15);
+      border: 3px solid #0ff;
+      color: #0ff;
+      font-size: 24px;
+      border-radius: 12px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 4px 0 #000;
+    }
+    .dpad button:active, .actions button:active {
+      transform: translateY(4px);
+      box-shadow: 0 0 0 #000;
+    }
+    #hud {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      padding: 15px;
+      display: flex;
+      justify-content: space-between;
+      color: #0ff;
+      text-shadow: 0 0 10px #0ff;
+      font-size: 14px;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+
+<div id="gameContainer">
+  <canvas id="gameCanvas"></canvas>
+  
+  <!-- HUD -->
+  <div id="hud">
+    <div>STAGE <span id="stageNum">1</span> • LV <span id="levelNum">1</span></div>
+    <div><span id="yards">0</span> / <span id="goal">100</span> YDS</div>
+  </div>
+
+  <!-- Mobile Controls -->
+  <div class="controls">
+    <!-- D-Pad -->
+    <div class="dpad">
+      <div style="display:grid; grid-template-columns:repeat(3,70px); gap:5px;">
+        <div></div>
+        <button id="btnUp">▲</button>
+        <div></div>
+        <button id="btnLeft">◀</button>
+        <button id="btnDown">▼</button>
+        <button id="btnRight">▶</button>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="actions" style="display:grid; grid-template-columns:repeat(2,1fr); gap:15px;">
+      <button id="btnY" style="background:rgba(255,60,60,0.2); border-color:#f66;">Y<br><small>TURBO</small></button>
+      <button id="btnX" style="background:rgba(60,120,255,0.2); border-color:#6cf;">X<br><small>HURDLE</small></button>
+      <button id="btnB" style="background:rgba(255,200,60,0.2); border-color:#fc6;">B<br><small>PLOW</small></button>
+      <button id="btnA" style="background:rgba(60,255,100,0.2); border-color:#6f6;">A<br><small>SPIN</small></button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from "https://esm.sh/three@0.177.0";
+
+// Your hero image as player texture
+const HERO_URL = "assets/hero/1.png";   // ← Put your image here
+
+let scene, camera, renderer, player;
+let playerMesh;
+const obstacles = [];
+
+async function init() {
+  const canvas = document.getElementById('gameCanvas');
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x0a1f3a, 30, 120);
+
+  camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 200);
+  camera.position.set(0, 8, 15);
+
+  // Lights
+  scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+  const sun = new THREE.DirectionalLight(0x88ccff, 1.2);
+  sun.position.set(10, 20, 15);
+  scene.add(sun);
+
+  // Create futuristic ground
+  const groundGeo = new THREE.PlaneGeometry(40, 400);
+  const groundMat = new THREE.MeshLambertMaterial({ color: 0x112233 });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.z = -80;
+  scene.add(ground);
+
+  // Load your armored player as sprite / plane with texture
+  const textureLoader = new THREE.TextureLoader();
+  const heroTex = await textureLoader.loadAsync(HERO_URL);
+  
+  const playerGeo = new THREE.PlaneGeometry(4, 6); // tall armored figure
+  const playerMat = new THREE.MeshBasicMaterial({ 
+    map: heroTex, 
+    transparent: true, 
+    side: THREE.DoubleSide 
+  });
+  
+  playerMesh = new THREE.Mesh(playerGeo, playerMat);
+  playerMesh.position.set(0, 3, 0);
+  scene.add(playerMesh);
+
+  // Start game loop
+  requestAnimationFrame(gameLoop);
+}
+
+let speed = 0;
+function gameLoop() {
+  // Basic forward movement
+  speed = 22 + Math.sin(Date.now()/300) * 2; // dynamic feel
+  if (playerMesh) {
+    playerMesh.position.z -= speed * 0.016; // \~60fps simulation
+  }
+
+  // Camera follow (chase cam)
+  if (playerMesh) {
+    camera.position.z = playerMesh.position.z + 18;
+    camera.lookAt(playerMesh.position.x, 4, playerMesh.position.z - 10);
+  }
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(gameLoop);
+}
+
+// Input handling (same button system as before, but bigger mobile friendly)
+document.querySelectorAll('button').forEach(btn => {
+  btn.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    console.log(btn.id + " pressed"); // replace with your game logic
+    // Example: btnY = turbo, btnA = spin, etc.
+  });
+  btn.addEventListener('touchend', (e) => e.preventDefault());
+});
+
+// Resize handler
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+init();
+</script>
+
+</body>
+</html>
