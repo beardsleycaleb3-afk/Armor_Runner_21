@@ -7,55 +7,229 @@
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { 
-    background:#0a0a1f; 
+    background:#111; 
     overflow:hidden; 
     height:100dvh; 
     font-family:'Courier New', monospace; 
     touch-action:none; 
   }
-  #game { position:relative; width:100vw; height:100dvh; }
-  canvas { display:block; }
+
+  .console {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-width: 620px;
+    margin: 0 auto;
+    background: linear-gradient(135deg, #2a0033 0%, #000 100%);
+    box-shadow: 0 0 40px rgba(0,0,0,0.9);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .monitor {
+    position: relative;
+    margin: 25px 20px 15px;
+    width: 380px;
+    height: 380px;
+    background: #000;
+    border: 22px solid #ff6600;
+    border-radius: 8px;
+    box-shadow: 0 0 25px #ff6600, inset 0 0 30px rgba(0,0,0,0.95);
+    overflow: hidden;
+    align-self: center;
+  }
+
+  #gameContainer {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: #87CEEB;
+  }
+
+  canvas { display: block; width: 100%; height: 100%; }
+
+  .scanlines {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.15) 50%);
+    background-size: 100% 4px;
+    pointer-events: none;
+    z-index: 5;
+  }
 
   #hud {
-    position:absolute; top:15px; left:0; right:0; padding:0 20px; z-index:30;
-    color:#ffd700; font-size:18px; display:flex; justify-content:space-between;
-    text-shadow: 0 0 8px #000, 2px 2px 0 #000;
+    position: absolute;
+    top: 12px;
+    left: 0;
+    right: 0;
+    padding: 0 18px;
+    color: #ffd700;
+    font-size: 16px;
+    display: flex;
+    justify-content: space-between;
+    text-shadow: 2px 2px 0 #000;
     font-weight: bold;
+    z-index: 20;
   }
-  .controls {
-    position:absolute; bottom:30px; left:0; right:0; 
-    display:flex; justify-content:space-between; padding:0 25px;
-    pointer-events:none;
+
+  #xpBarContainer {
+    position: absolute;
+    top: 42px;
+    left: 20px;
+    right: 20px;
+    height: 6px;
+    background: #333;
+    border: 1px solid #ffd700;
   }
+
+  #xpBar {
+    height: 100%;
+    width: 0%;
+    background: #4ade80;
+    transition: width 0.3s;
+  }
+
+  .controls-deck {
+    height: 140px;
+    background: #111;
+    border-top: 18px solid #ff6600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 25px;
+    box-shadow: 0 -8px 15px rgba(0,0,0,0.6);
+  }
+
+  .dpad {
+    display: grid;
+    grid-template-columns: 40px 40px 40px;
+    gap: 6px;
+  }
+
+  .action-buttons {
+    display: grid;
+    grid-template-columns: 40px 40px;
+    gap: 12px;
+  }
+
   button {
-    width:85px; height:85px; 
-    background:rgba(255,215,0,0.18); 
-    border:5px solid #ffd700;
-    color:#ffd700; 
-    font-size:36px; 
-    font-weight:bold; 
-    border-radius:22px;
-    box-shadow:0 10px 0 #000;
-    pointer-events:auto;
+    width: 40px;
+    height: 40px;
+    background: #333;
+    border: 3px solid #555;
+    color: #ddd;
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: 8px;
+    box-shadow: 0 5px 0 #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
-  button:active { 
-    transform:translateY(6px); 
-    box-shadow:0 3px 0 #000; 
+
+  button:active {
+    transform: translateY(3px);
+    box-shadow: 0 2px 0 #000;
+  }
+
+  .btn-y { background:#d32f2f; border-color:#ff8a80; }
+  .btn-x { background:#1976d2; border-color:#82b1ff; }
+  .btn-b { background:#fbc02d; border-color:#fff59d; color:#000; }
+  .btn-a { background:#388e3c; border-color:#b9f6ca; }
+
+  /* Skill Tree */
+  #skillScreen {
+    position: absolute;
+    inset: 0;
+    background: rgba(10,10,31,0.98);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    z-index: 100;
+    padding: 20px;
+  }
+
+  .skill-tree {
+    position: relative;
+    width: 300px;
+    height: 300px;
+    margin: 20px 0;
+  }
+
+  .skill-node {
+    position: absolute;
+    width: 72px;
+    height: 72px;
+    background: #1f2937;
+    border: 3px solid #ffd700;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    z-index: 10;
+  }
+
+  .skill-node:hover {
+    transform: scale(1.12);
+    border-color: #4ade80;
+    box-shadow: 0 0 15px #4ade80;
+  }
+
+  .skill-node .name { font-size: 11px; font-weight: bold; }
+  .skill-node .level { font-size: 20px; color: #4ade80; margin-top: 2px; }
+
+  .connection {
+    position: absolute;
+    height: 3px;
+    background: linear-gradient(to right, #64748b, #94a3b8);
+    z-index: 5;
+  }
+
+  /* Tooltip */
+  #tooltip {
+    position: absolute;
+    background: #1f2937;
+    border: 2px solid #ffd700;
+    border-radius: 8px;
+    padding: 12px 16px;
+    max-width: 220px;
+    color: #ddd;
+    font-size: 14px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.6);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 200;
   }
 </style>
 </head>
 <body>
 
-<div id="game">
-  <canvas id="canvas"></canvas>
+<div class="console">
+  <div class="monitor">
+    <div id="gameContainer">
+      <canvas id="canvas"></canvas>
+      <div class="scanlines"></div>
+    </div>
+  </div>
 
   <div id="hud">
     <div>STAGE <span id="stage">1</span> • LV <span id="level">1</span></div>
     <div><span id="yards">0</span> / <span id="goal">100</span> YDS</div>
   </div>
 
-  <div class="controls">
-    <div style="display:grid; grid-template-columns:repeat(3,85px); gap:6px;">
+  <div id="xpBarContainer">
+    <div id="xpBar"></div>
+  </div>
+
+  <div class="controls-deck">
+    <div class="dpad">
       <div></div>
       <button id="up">▲</button>
       <div></div>
@@ -64,28 +238,65 @@
       <button id="right">▶</button>
     </div>
 
-    <div style="display:grid; grid-template-columns:repeat(2,85px); gap:14px;">
-      <button id="y" style="border-color:#ff5722;">Y</button>
-      <button id="x" style="border-color:#2196f3;">X</button>
-      <button id="b" style="border-color:#fbc02d;">B</button>
-      <button id="a" style="border-color:#4caf50;">A</button>
+    <div class="action-buttons">
+      <button id="y" class="btn-y">Y</button>
+      <button id="x" class="btn-x">X</button>
+      <button id="b" class="btn-b">B</button>
+      <button id="a" class="btn-a">A</button>
     </div>
   </div>
 </div>
+
+<!-- Skill Tree Screen -->
+<div id="skillScreen">
+  <h2 style="color:#ffd700; margin-bottom:8px;">LOCKER ROOM</h2>
+  <p style="color:#aaa; margin-bottom:25px;">SKILL TREE • Points: <span id="skillPoints" style="color:#4ade80;font-size:18px">0</span></p>
+
+  <div class="skill-tree">
+    <!-- Speed -->
+    <div class="skill-node" id="node-speed" style="top:30px; left:115px;">
+      <div class="name">SPEED</div>
+      <div class="level" id="level-speed">1</div>
+    </div>
+
+    <!-- Power -->
+    <div class="skill-node" id="node-power" style="top:130px; left:25px;">
+      <div class="name">POWER</div>
+      <div class="level" id="level-power">1</div>
+    </div>
+
+    <!-- Agility -->
+    <div class="skill-node" id="node-agility" style="top:130px; left:205px;">
+      <div class="name">AGILITY</div>
+      <div class="level" id="level-agility">1</div>
+    </div>
+
+    <!-- Visual Connections -->
+    <div class="connection" style="top:78px; left:138px; width:55px; transform:rotate(38deg);"></div>
+    <div class="connection" style="top:78px; left:138px; width:55px; transform:rotate(-38deg);"></div>
+    <div class="connection" style="top:155px; left:88px; width:135px;"></div>
+  </div>
+
+  <button onclick="closeSkillScreen()" style="margin-top:30px; padding:12px 32px; background:#d32f2f; color:white; border:none; border-radius:6px; font-size:16px;">
+    CLOSE (SELECT)
+  </button>
+</div>
+
+<!-- Tooltip -->
+<div id="tooltip"></div>
 
 <script type="module">
 import * as THREE from "https://esm.sh/three@0.177.0";
 
 const canvas = document.getElementById('canvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+renderer.setSize(380, 380);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0a1f3a);
 scene.fog = new THREE.Fog(0x0a1f3a, 35, 130);
 
-const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 300);
+const camera = new THREE.PerspectiveCamera(65, 1, 0.1, 300);
 
 scene.add(new THREE.AmbientLight(0xffffff, 0.9));
 const sun = new THREE.DirectionalLight(0xffdd88, 1.1);
@@ -101,14 +312,14 @@ ground.rotation.x = -Math.PI / 2;
 ground.position.z = -220;
 scene.add(ground);
 
-// Your player - using assets/front_1.png
+// Player
 let playerMesh = null;
+let bobTime = 0;
 
 async function loadPlayer() {
   try {
     const loader = new THREE.TextureLoader();
-    const texture = await loader.loadAsync('assets/front_1.png');   // ← Your exact file name
-
+    const texture = await loader.loadAsync('assets/front_1.png');
     texture.magFilter = THREE.NearestFilter;
 
     const geo = new THREE.PlaneGeometry(8.5, 13.2);
@@ -122,14 +333,171 @@ async function loadPlayer() {
     playerMesh = new THREE.Mesh(geo, mat);
     playerMesh.position.set(0, 6.8, 0);
     scene.add(playerMesh);
-    console.log("Player loaded successfully from assets/front_1.png");
   } catch (e) {
-    console.warn("Could not load assets/front_1.png - using placeholder");
     const geo = new THREE.CapsuleGeometry(1.8, 5.5, 8, 16);
     const mat = new THREE.MeshLambertMaterial({ color: 0x1e88e5 });
     playerMesh = new THREE.Mesh(geo, mat);
     playerMesh.position.set(0, 6, 0);
     scene.add(playerMesh);
+  }
+}
+
+// RPG System
+let level = 1;
+let xp = 0;
+let xpToNext = 200;
+let skillPoints = 0;
+let stats = { speed: 1, power: 1, agility: 1 };
+
+const skillDescriptions = {
+  speed: "Increases base running speed and turbo effectiveness",
+  power: "Stronger plow and spin attacks, better obstacle destruction",
+  agility: "Faster lane changes and improved hurdle timing"
+};
+
+function addXP(amount) {
+  xp += amount;
+  while (xp >= xpToNext) {
+    xp -= xpToNext;
+    level++;
+    skillPoints++;
+    xpToNext = Math.floor(xpToNext * 1.25);
+  }
+  updateXPBar();
+  updateSkillLevels();
+}
+
+function updateXPBar() {
+  const pct = Math.min((xp / xpToNext) * 100, 100);
+  document.getElementById('xpBar').style.width = pct + '%';
+}
+
+function updateSkillLevels() {
+  document.getElementById('level-speed').textContent = stats.speed;
+  document.getElementById('level-power').textContent = stats.power;
+  document.getElementById('level-agility').textContent = stats.agility;
+  document.getElementById('skillPoints').textContent = skillPoints;
+}
+
+// Skill Tree UI + Tooltips
+const tooltip = document.getElementById('tooltip');
+
+function showTooltip(skillId, x, y) {
+  const desc = skillDescriptions[skillId];
+  tooltip.innerHTML = `
+    <strong>\( {skillId.toUpperCase()} Lv. \){stats[skillId]}</strong><br>
+    ${desc}<br><br>
+    <small style="color:#4ade80">Tap to upgrade (Cost: 1 point)</small>
+  `;
+  tooltip.style.left = (x + 20) + 'px';
+  tooltip.style.top = (y - 80) + 'px';
+  tooltip.style.opacity = 1;
+}
+
+function hideTooltip() {
+  tooltip.style.opacity = 0;
+}
+
+function showSkillScreen() {
+  document.getElementById('skillScreen').style.display = 'flex';
+  updateSkillLevels();
+}
+
+function closeSkillScreen() {
+  document.getElementById('skillScreen').style.display = 'none';
+  hideTooltip();
+}
+
+// Node interactions
+['speed','power','agility'].forEach(skill => {
+  const node = document.getElementById(`node-${skill}`);
+  node.addEventListener('click', () => {
+    if (skillPoints > 0) {
+      stats[skill]++;
+      skillPoints--;
+      updateSkillLevels();
+    }
+  });
+
+  node.addEventListener('touchstart', (e) => {
+    const rect = node.getBoundingClientRect();
+    showTooltip(skill, rect.left + rect.width/2, rect.top);
+  });
+
+  node.addEventListener('touchend', hideTooltip);
+});
+
+// Game objects and loop (same as before with stat integration)
+let obstacles = [];
+let powerups = [];
+
+function spawnObstacle() {
+  const lanePos = (Math.floor(Math.random() * 5) - 2) * 6.2;
+  const ob = new THREE.Mesh(
+    new THREE.BoxGeometry(2.2, 4.5, 2.2),
+    new THREE.MeshLambertMaterial({ color: 0xb91c1c })
+  );
+  ob.position.set(lanePos, 2.8, playerMesh ? playerMesh.position.z - 90 : -90);
+  ob.userData = { active: true };
+  scene.add(ob);
+  obstacles.push(ob);
+}
+
+function spawnPowerup() {
+  const lanePos = (Math.floor(Math.random() * 5) - 2) * 6.2;
+  const pu = new THREE.Mesh(
+    new THREE.SphereGeometry(1.2, 16, 16),
+    new THREE.MeshBasicMaterial({ color: 0xffeb3b })
+  );
+  pu.position.set(lanePos, 4, playerMesh ? playerMesh.position.z - 100 : -100);
+  pu.userData = { type: Math.random() > 0.6 ? 'shield' : Math.random() > 0.5 ? 'multi' : 'speed', active: true };
+  scene.add(pu);
+  powerups.push(pu);
+}
+
+function checkCollisions() {
+  if (!playerMesh) return;
+
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    const ob = obstacles[i];
+    if (!ob.userData.active) continue;
+
+    const distZ = Math.abs(ob.position.z - playerMesh.position.z);
+    const distX = Math.abs(ob.position.x - playerMesh.position.x);
+
+    if (distZ < 3 && distX < 3) {
+      playerMesh.position.z += 15;
+      scene.remove(ob);
+      obstacles.splice(i, 1);
+    }
+
+    if (ob.position.z > playerMesh.position.z + 30) {
+      scene.remove(ob);
+      obstacles.splice(i, 1);
+    }
+  }
+
+  for (let i = powerups.length - 1; i >= 0; i--) {
+    const pu = powerups[i];
+    if (!pu.userData.active) continue;
+
+    const distZ = Math.abs(pu.position.z - playerMesh.position.z);
+    const distX = Math.abs(pu.position.x - playerMesh.position.x);
+
+    if (distZ < 3 && distX < 3) {
+      const type = pu.userData.type;
+      if (type === 'speed') isTurbo = true, setTimeout(() => isTurbo = false, 3000);
+      else if (type === 'multi') yards += 60;
+
+      scene.remove(pu);
+      powerups.splice(i, 1);
+      addXP(25);
+    }
+
+    if (pu.position.z > playerMesh.position.z + 30) {
+      scene.remove(pu);
+      powerups.splice(i, 1);
+    }
   }
 }
 
@@ -140,24 +508,33 @@ let isTurbo = false;
 
 function gameLoop() {
   const dt = 0.016;
+  const currentSpeed = isTurbo ? speed * (1 + stats.speed * 0.18) : speed * (1 + stats.speed * 0.08);
 
   if (playerMesh) {
-    const currentSpeed = isTurbo ? speed * 1.7 : speed;
     playerMesh.position.z -= currentSpeed * dt;
-    yards += currentSpeed * dt * 0.8;
+    yards += currentSpeed * dt * (0.8 + stats.power * 0.06);
 
-    const targetX = lane * 6.2;
-    playerMesh.position.x += (targetX - playerMesh.position.x) * 0.25;
+    const targetX = lane * 6.2 * (1 + stats.agility * 0.15);
+    playerMesh.position.x += (targetX - playerMesh.position.x) * 0.32;
+
+    bobTime += currentSpeed * dt * 9;
+    const bob = Math.sin(bobTime) * 0.09;
+    const tilt = Math.sin(bobTime * 2) * 0.04;
+    playerMesh.position.y = 6.8 + bob;
+    playerMesh.rotation.z = tilt;
   }
+
+  if (Math.random() < 0.028) spawnObstacle();
+  if (Math.random() < 0.018) spawnPowerup();
+
+  checkCollisions();
 
   document.getElementById('yards').textContent = Math.floor(yards);
 
-  // Madden chase camera - behind the runner
   if (playerMesh) {
     camera.position.x += (playerMesh.position.x * 0.25 - camera.position.x) * 0.12;
     camera.position.y = 19 + (isTurbo ? 5 : 0);
     camera.position.z = playerMesh.position.z + 36;
-
     camera.lookAt(playerMesh.position.x * 0.4, 6.5, playerMesh.position.z - 16);
   }
 
@@ -165,32 +542,28 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 
-// Controls
-document.getElementById('left').addEventListener('touchstart', e => { 
-  e.preventDefault(); 
-  lane = Math.max(-2, lane - 1); 
-});
+// Controls + Skill Screen
+document.getElementById('left').addEventListener('touchstart', e => { e.preventDefault(); lane = Math.max(-2, lane - 1); });
+document.getElementById('right').addEventListener('touchstart', e => { e.preventDefault(); lane = Math.min(2, lane + 1); });
 
-document.getElementById('right').addEventListener('touchstart', e => { 
-  e.preventDefault(); 
-  lane = Math.min(2, lane + 1); 
-});
-
-document.getElementById('y').addEventListener('touchstart', e => { 
-  e.preventDefault(); 
-  isTurbo = true; 
-});
-
+document.getElementById('y').addEventListener('touchstart', e => { e.preventDefault(); isTurbo = true; });
 document.getElementById('y').addEventListener('touchend', () => isTurbo = false);
 
 document.getElementById('a').addEventListener('touchstart', e => { e.preventDefault(); });
 document.getElementById('b').addEventListener('touchstart', e => { e.preventDefault(); });
 document.getElementById('x').addEventListener('touchstart', e => { e.preventDefault(); });
 
+// Open skill screen by tapping bottom-left area
+document.addEventListener('touchstart', e => {
+  if (e.touches[0].clientY > window.innerHeight - 100 && e.touches[0].clientX < 140) {
+    showSkillScreen();
+  }
+});
+
 window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.aspect = 1;
   camera.updateProjectionMatrix();
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(380, 380);
 });
 
 loadPlayer();
