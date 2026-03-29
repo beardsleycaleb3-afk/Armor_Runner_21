@@ -50,9 +50,17 @@ const canvas = document.getElementById('arCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = 350; canvas.height = 350;
 
+const SKEW_ANGLE = 45 * Math.PI / 180; // 45 degrees in radians
+const TILE_W = 70; // Shrunk tiles
+const TILE_H = 170;
+const COLS = 5;
+const ROWS = 200;
+const LANES = [20 + i * TILE_W for (i of [0,1,2,3,4])]; // [20,90,160,230,300]
+const DEPTH_SCALE = Math.cos(SKEW_ANGLE); // ~0.707 for projection
+
 /** EXPLICIT ASSET CALL OUTS **/
 const spriteMap = {
-    // Runner Assets
+    // Runner Assets (player now 3x bigger via scale)
     hs: src = 'assets/runner/hs1.gif',
     hsSpin: src = 'assets/runner/hs_invincible.gif',
     hsHurdle: src = 'assets/runner/hurdle1.gif',
@@ -72,7 +80,7 @@ const spriteMap = {
     powerup: src = 'assets/powerups/powerups.png',
     item: src = 'assets/items/item.png',
     
-    // Environment
+    // Environment - now smaller grass tiles
     backdrops: [ src =
         'assets/backdrops/1.jpeg', 'assets/backdrops/2.jpeg', 'assets/backdrops/3.jpeg',
         'assets/backdrops/4.jpeg', 'assets/backdrops/5.jpeg', 'assets/backdrops/6.jpeg',
@@ -104,11 +112,7 @@ loadAssets();
 
 /** GAME LOGIC **/
 let dbm = JSON.parse(localStorage.getItem('DBM_SAVE')) || { level:1, xp:0, era:'HS' };
-let gameState = 'MENU', worldY = 0, currentLane = 2, playerX = 175;
-const LANES = [45, 110, 175, 240, 305];
-const TILE_DIM = 170; // Grass PNG height
-const TILES_LONG = 200;
-const ROW_SPACING = 150; 
+let gameState = 'MENU', worldY = 0, currentLane = 2, playerX = LANES[2];
 let turbo=false, spinning=false, hurdling=false, trucking=false, powerActive=false, isDown=false;
 let entities = [], grassScroll = 0;
 
@@ -118,11 +122,11 @@ function generate() {
     const currentDensity = densities[dbm.level - 1] || 0.30;
     dbm.era = dbm.level <= 3 ? 'HS' : (dbm.level <= 6 ? 'COLLEGE' : 'PRO');
     
-    for (let row = 5; row < TILES_LONG; row++) {
+    for (let row = 5; row < ROWS; row++) {
         if (Math.random() < currentDensity) {
             entities.push({
-                x: LANES[Math.floor(Math.random() * 5)],
-                y: row * ROW_SPACING,
+                col: Math.floor(Math.random() * COLS),
+                row: row,
                 active: true,
                 type: Math.random() > 0.95 ? 'POWER' : (Math.random() > 0.90 ? 'ITEM' : 'DEFENDER'),
                 dIdx: Math.floor(Math.random() * 4)
@@ -131,16 +135,27 @@ function generate() {
     }
 }
 
+function getSkewedPos(col, rowOffset) {
+    const depth = ROWS - rowOffset; // Farther back = smaller
+    const scale = Math.max(0.1, DEPTH_SCALE * (1 - 0.003 * depth)); // Vanish point
+    const skewX = Math.sin(SKEW_ANGLE) * (TILE_H - rowOffset % TILE_H);
+    const x = 20 + col * TILE_W * scale + skewX * 0.3;
+    const y = 280 - rowOffset + (1 - scale) * 100; // Lift far tiles
+    const size = TILE_W * scale;
+    return {x, y, size};
+}
+
 function update() {
     if(gameState !== 'RUN' || isDown) return;
     let speed = turbo ? 10 : 5;
     worldY += speed;
-    grassScroll = (grassScroll + speed) % TILE_DIM;
+    grassScroll = (grassScroll + speed) % TILE_H;
 
     entities.forEach(e => {
         if(!e.active) return;
-        let sY = 280 - (e.y - worldY);
-        if(sY > 260 && sY < 310 && Math.abs(e.x - playerX) < 35) {
+        const rowOffset = e.row * ROW_SPACING - worldY;
+        const pos = getSkewedPos(e.col, rowOffset);
+        if(pos.y > 250 && pos.y < 320 && Math.abs(pos.x - playerX) < 40) {
             if(e.type === 'ITEM') { e.active = false; dbm.xp += 100; }
             else if(e.type === 'POWER') { e.active = false; powerActive = true; setTimeout(() => powerActive = false, 5000); }
             else if(spinning || trucking || powerActive) { e.active = false; dbm.xp += 25; }
@@ -151,7 +166,7 @@ function update() {
         }
     });
 
-    if(worldY > TILES_LONG * ROW_SPACING) {
+    if(worldY > ROWS * ROW_SPACING) {
         dbm.level++;
         if (dbm.level > 9) { gameState = 'MENU'; dbm.level = 1; }
         else { worldY = 0; generate(); localStorage.setItem('DBM_SAVE', JSON.stringify(dbm)); }
@@ -164,36 +179,57 @@ function draw() {
     let bg = sprites.backdrops[(dbm.level - 1) % 8];
     if(bg && bg.complete) ctx.drawImage(bg, 0, 0, 350, 180);
     
+    // Draw 5x200 grid with skew
     let gImg = sprites.grass[(dbm.level - 1) % 9];
     if(gImg && gImg.complete) {
-        for(let i = -1; i < 3; i++) {
-            ctx.drawImage(gImg, 0, 180 + grassScroll + (i * TILE_DIM), 350, TILE_DIM);
+        for(let col=0; col<COLS; col++) {
+            for(let rowOffset=0; rowOffset<400; rowOffset += ROW_SPACING) { // Visible rows
+                const pos = getSkewedPos(col, rowOffset + grassScroll);
+                if(pos.y > -50 && pos.y < 400 && pos.size > 5) {
+                    ctx.save();
+                    ctx.translate(pos.x + pos.size/2, pos.y + pos.size/2);
+                    ctx.scale(pos.size/TILE_W, pos.size/TILE_W);
+                    ctx.rotate(SKEW_ANGLE * 0.1); // Slight tile rotation for 3D feel
+                    ctx.drawImage(gImg, -TILE_W/2, -TILE_H/2, TILE_W, TILE_H);
+                    ctx.restore();
+                }
+            }
         }
     }
 
     if(gameState === 'RUN') {
         let ez = sprites.endzones[(dbm.level - 1) % 8];
-        let ezY = 280 - ((TILES_LONG * ROW_SPACING) - worldY);
+        let ezY = 280 - ((ROWS * ROW_SPACING) - worldY);
         if(ezY > 150 && ez && ez.complete) ctx.drawImage(ez, 0, ezY, 350, 150);
 
         entities.forEach(e => {
             if(!e.active) return;
-            let sY = 280 - (e.y - worldY);
-            if(sY > -50 && sY < 400) {
+            const rowOffset = e.row * ROW_SPACING - worldY;
+            const pos = getSkewedPos(e.col, rowOffset);
+            if(pos.y > -50 && pos.y < 400 && pos.size > 10) {
                 let img = (e.type === 'POWER') ? sprites.powerup : (e.type === 'ITEM' ? sprites.item : sprites.defenders[e.dIdx]);
-                if(img && img.complete) ctx.drawImage(img, e.x-25, sY-35, 50, 50);
+                if(img && img.complete) {
+                    ctx.save();
+                    ctx.translate(pos.x, pos.y);
+                    ctx.scale(pos.size/50, pos.size/50);
+                    ctx.drawImage(img, -25, -25, 50, 50);
+                    ctx.restore();
+                }
             }
         });
 
+        // Player 3x bigger + skew position
         let pSprite = isDown ? sprites.down : 
                      ((spinning || powerActive) ? sprites.hsSpin : 
                      (hurdling ? (dbm.era === 'HS' ? sprites.hsHurdle : sprites.proHurdle) : 
                      (dbm.era === 'HS' ? sprites.hs : sprites.pro)));
-
+        const playerScale = 3;
         if(pSprite && pSprite.complete) {
             ctx.save();
+            ctx.translate(playerX, 260 + (hurdling ? -35 : (isDown ? 15 : 0)));
+            ctx.scale(playerScale, playerScale);
             if(powerActive) ctx.filter = "drop-shadow(0 0 12px cyan) brightness(1.3)";
-            ctx.drawImage(pSprite, playerX-32, 260 + (hurdling ? -35 : (isDown ? 15 : 0)), 64, 80);
+            ctx.drawImage(pSprite, -32, -40, 64, 80);
             ctx.restore();
         }
     } else {
@@ -204,6 +240,7 @@ function draw() {
     requestAnimationFrame(draw);
 }
 
+const ROW_SPACING = 150; // Global now
 const input = (id, down) => {
     if(id === 'btnY' && down && gameState === 'MENU') { generate(); gameState = 'RUN'; }
     if(gameState !== 'RUN' || isDown) return;
