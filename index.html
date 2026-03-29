@@ -1,20 +1,163 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Runner-back</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a0f; }
-    iframe { width: 100%; height: 100%; border: none; display: block; }
-  </style>
+  <base href="/api/games/ea2905b4-5b62-49c8-aacd-1e69484c39a9/files/__e/5e6e8cb6-a74f-4e95-9f6b-ddced3303284/">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Running Back Rising - Football RPG</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css" />
 </head>
-<body>
-  <iframe
-    src="https://buildwithstar.com/games/ea2905b4-5b62-49c8-aacd-1e69484c39a9/embed?source=itch"
-    allowfullscreen
-    allow="autoplay; fullscreen; gamepad"
-  ></iframe>
+<body class="bg-gray-900 text-white overflow-hidden" style="margin:0;padding:0;">
+  <div id="game-root" style="width:100vw;height:100svh;position:relative;overflow:hidden;">
+
+    <!-- MAIN MENU -->
+    <div id="screen-menu" class="screen flex flex-col items-center justify-center h-full">
+      <div class="menu-bg absolute inset-0"></div>
+      <div class="relative z-10 flex flex-col items-center gap-4 px-4 text-center">
+        <div class="text-6xl mb-2">🏈</div>
+        <h1 class="text-4xl md:text-5xl font-black tracking-wider text-yellow-400 drop-shadow-lg" style="text-shadow:0 0 30px #f59e0b">RUNNING BACK RISING</h1>
+        <p class="text-lg text-gray-300 italic">From Freshman to Bowl Champion</p>
+        <div class="mt-4 bg-gray-800 bg-opacity-80 rounded-xl p-4 max-w-xs text-sm text-gray-300">
+          <p>🕹️ WASD / Arrow Keys — Move</p>
+          <p>⬆️ Hold UP — Sprint boost</p>
+          <p>🖱️ Touch — Tap to steer</p>
+        </div>
+        <button id="btn-start" class="mt-6 px-10 py-4 bg-yellow-400 text-gray-900 font-black text-2xl rounded-full shadow-xl hover:bg-yellow-300 active:scale-95 transition-all uppercase tracking-widest">START CAREER</button>
+        <button id="btn-continue" class="hidden px-8 py-3 bg-green-500 text-white font-bold text-lg rounded-full shadow hover:bg-green-400 transition-all">CONTINUE (Save Found)</button>
+      </div>
+    </div>
+
+    <!-- CAREER MAP / CHAPTER SELECT -->
+    <div id="screen-career" class="screen hidden flex-col items-center justify-start h-full overflow-y-auto py-6">
+      <div class="career-bg absolute inset-0"></div>
+      <div class="relative z-10 w-full max-w-lg px-4">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-2xl font-black text-yellow-400">🗓️ CAREER MAP</h2>
+          <div id="career-stats-bar" class="text-sm text-gray-300 text-right"></div>
+        </div>
+        <div id="career-rpg-bar" class="mb-4 bg-gray-800 bg-opacity-80 rounded-xl p-3 flex gap-4 text-sm flex-wrap justify-center"></div>
+        <div id="career-chapters" class="flex flex-col gap-3"></div>
+      </div>
+    </div>
+
+    <!-- UPGRADE SHOP -->
+    <div id="screen-upgrade" class="screen hidden flex-col items-center justify-center h-full">
+      <div class="career-bg absolute inset-0"></div>
+      <div class="relative z-10 w-full max-w-md px-4">
+        <h2 class="text-3xl font-black text-yellow-400 text-center mb-2">⬆️ LEVEL UP!</h2>
+        <p id="upgrade-context" class="text-center text-gray-300 mb-4 text-sm"></p>
+        <div id="upgrade-stat-bars" class="bg-gray-800 rounded-xl p-3 mb-4 text-sm space-y-2"></div>
+        <div id="upgrade-choices" class="grid grid-cols-1 gap-3"></div>
+        <div class="flex justify-between mt-4 text-sm text-gray-400">
+          <span id="upgrade-stars-left">⭐ Stars: 0</span>
+          <button id="btn-upgrade-skip" class="text-gray-500 hover:text-gray-300 underline">Skip</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CUTSCENE / STORY -->
+    <div id="screen-cutscene" class="screen hidden flex-col items-center justify-center h-full">
+      <div class="cutscene-bg absolute inset-0"></div>
+      <div class="relative z-10 w-full max-w-md px-4 text-center">
+        <div id="cutscene-icon" class="text-6xl mb-4"></div>
+        <h2 id="cutscene-title" class="text-3xl font-black text-yellow-400 mb-3"></h2>
+        <p id="cutscene-body" class="text-gray-200 text-lg leading-relaxed mb-6"></p>
+        <button id="btn-cutscene-next" class="px-8 py-3 bg-yellow-400 text-gray-900 font-black text-lg rounded-full hover:bg-yellow-300 transition-all">LET'S GO! 🏈</button>
+      </div>
+    </div>
+
+    <!-- GAME CANVAS SCREEN -->
+    <div id="screen-game" class="screen hidden relative h-full">
+      <canvas id="game-canvas" style="display:block;width:100%;height:100%;"></canvas>
+
+      <!-- HUD -->
+      <div id="hud" class="absolute top-0 left-0 right-0 pointer-events-none">
+        <div class="flex items-start justify-between px-3 pt-2 gap-2">
+          <div class="bg-black bg-opacity-60 rounded-lg px-3 py-1 text-sm font-bold">
+            <span id="hud-stage" class="text-yellow-400"></span>
+          </div>
+          <div class="bg-black bg-opacity-60 rounded-lg px-3 py-1 text-center text-sm font-bold">
+            <div id="hud-yards" class="text-green-400 text-lg leading-tight">0 YDS</div>
+            <div id="hud-timer" class="text-white text-xs">TIME: 0.0s</div>
+          </div>
+          <div class="bg-black bg-opacity-60 rounded-lg px-3 py-1 text-sm font-bold text-right">
+            <div id="hud-score" class="text-yellow-400">⭐ 0</div>
+            <div id="hud-health" class="text-red-400 text-xs">❤️ ❤️ ❤️</div>
+          </div>
+        </div>
+        <div class="flex justify-center mt-1">
+          <div class="bg-black bg-opacity-50 rounded px-2 py-0.5 text-xs text-gray-400" id="hud-hint"></div>
+        </div>
+      </div>
+
+      <!-- SPRINT BAR -->
+      <div class="absolute bottom-20 left-1/2 -translate-x-1/2 w-40 pointer-events-none">
+        <div class="text-xs text-center text-gray-300 mb-1">SPRINT</div>
+        <div class="h-3 bg-gray-700 rounded-full overflow-hidden">
+          <div id="sprint-bar" class="h-full bg-yellow-400 transition-all rounded-full" style="width:100%"></div>
+        </div>
+      </div>
+
+      <!-- TOUCH Controls -->
+      <div id="touch-controls" class="absolute bottom-4 left-0 right-0 flex justify-between px-6 pointer-events-auto">
+        <div class="flex gap-2">
+          <button class="touch-btn" data-dir="left">◀</button>
+          <button class="touch-btn" data-dir="right">▶</button>
+        </div>
+        <div class="flex gap-2">
+          <button class="touch-btn" data-dir="up">⬆ Sprint</button>
+          <button class="touch-btn" data-dir="down">⬇</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULTS SCREEN -->
+    <div id="screen-results" class="screen hidden flex-col items-center justify-center h-full">
+      <div class="results-bg absolute inset-0"></div>
+      <div class="relative z-10 w-full max-w-md px-4 text-center">
+        <div id="results-icon" class="text-6xl mb-3"></div>
+        <h2 id="results-title" class="text-4xl font-black mb-2"></h2>
+        <div id="results-grade" class="text-6xl font-black my-3"></div>
+        <div id="results-stats" class="bg-gray-800 bg-opacity-80 rounded-xl p-4 mb-4 text-left space-y-2 text-sm"></div>
+        <div id="results-stars-earned" class="text-2xl font-black text-yellow-400 mb-4"></div>
+        <div class="flex gap-3 justify-center">
+          <button id="btn-results-continue" class="px-8 py-3 bg-yellow-400 text-gray-900 font-black text-lg rounded-full hover:bg-yellow-300 transition-all">CONTINUE</button>
+          <button id="btn-results-retry" class="hidden px-6 py-3 bg-red-600 text-white font-bold rounded-full hover:bg-red-500 transition-all">RETRY</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GAME OVER -->
+    <div id="screen-gameover" class="screen hidden flex-col items-center justify-center h-full">
+      <div class="gameover-bg absolute inset-0"></div>
+      <div class="relative z-10 text-center px-4">
+        <div class="text-6xl mb-4">💔</div>
+        <h2 class="text-5xl font-black text-red-500 mb-3">BENCHED!</h2>
+        <p id="gameover-reason" class="text-gray-300 text-lg mb-6"></p>
+        <div id="gameover-best" class="text-gray-400 text-sm mb-6"></div>
+        <div class="flex gap-4 justify-center">
+          <button id="btn-gameover-retry" class="px-8 py-3 bg-yellow-400 text-gray-900 font-black text-xl rounded-full hover:bg-yellow-300 transition-all">TRY AGAIN</button>
+          <button id="btn-gameover-menu" class="px-6 py-3 bg-gray-600 text-white font-bold rounded-full hover:bg-gray-500 transition-all">MAIN MENU</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- BOWL WIN SCREEN -->
+    <div id="screen-bowl-win" class="screen hidden flex-col items-center justify-center h-full">
+      <div class="bowl-bg absolute inset-0"></div>
+      <div class="relative z-10 text-center px-4">
+        <div class="text-7xl mb-4 animate-bounce">🏆</div>
+        <h2 class="text-5xl font-black text-yellow-400 mb-3" style="text-shadow:0 0 40px #f59e0b">BOWL CHAMPION!</h2>
+        <p class="text-2xl text-white mb-2">You've made it to the top!</p>
+        <p id="bowl-final-stats" class="text-gray-300 mb-6"></p>
+        <div id="bowl-stars" class="text-4xl mb-6"></div>
+        <button id="btn-bowl-restart" class="px-10 py-4 bg-yellow-400 text-gray-900 font-black text-2xl rounded-full hover:bg-yellow-300 transition-all">PLAY AGAIN</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="main.js"></script>
 </body>
 </html>
