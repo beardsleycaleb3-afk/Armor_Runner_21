@@ -1,4 +1,4 @@
-const CACHE_NAME = 'Armor_Runner_21-v1';
+const CACHE_NAME = 'Armor_Runner_21-v2';
 const assets = [
   '/',
   'index.html',
