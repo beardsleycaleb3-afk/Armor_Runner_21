@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <base href="/api/games/ea2905b4-5b62-49c8-aacd-1e69484c39a9/files/__e/5e6e8cb6-a74f-4e95-9f6b-ddced3303284/">
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Armor_Runner_21</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Armor_runner_21</title>
+  <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body class="bg-gray-900 text-white overflow-hidden" style="margin:0;padding:0;">
@@ -19,12 +18,12 @@
         <h1 class="text-4xl md:text-5xl font-black tracking-wider text-yellow-400 drop-shadow-lg" style="text-shadow:0 0 30px #f59e0b">RUNNING BACK RISING</h1>
         <p class="text-lg text-gray-300 italic">From Freshman to Bowl Champion</p>
         <div class="mt-4 bg-gray-800 bg-opacity-80 rounded-xl p-4 max-w-xs text-sm text-gray-300">
-          <p>🕹️ WASD / Arrow Keys — Move</p>
-          <p>⬆️ Hold UP — Sprint boost</p>
-          <p>🖱️ Touch — Tap to steer</p>
+        
+          
+          
         </div>
-        <button id="btn-start" class="mt-6 px-10 py-4 bg-yellow-400 text-gray-900 font-black text-2xl rounded-full shadow-xl hover:bg-yellow-300 active:scale-95 transition-all uppercase tracking-widest">START CAREER</button>
-        <button id="btn-continue" class="hidden px-8 py-3 bg-green-500 text-white font-bold text-lg rounded-full shadow hover:bg-green-400 transition-all">CONTINUE (Save Found)</button>
+        <button id="btn-start" class="mt-6 px-10 py-4 bg-yellow-400 text-gray-900 font-black text-2xl rounded-full shadow-xl hover:bg-yellow-300 active:scale-95 transition-all uppercase tracking-widest">👻</button>
+        <button id="btn-continue" class="hidden px-8 py-3 bg-green-500 text-white font-bold text-lg rounded-full shadow hover:bg-green-400 transition-all"></button>
       </div>
     </div>
 
@@ -33,8 +32,8 @@
       <div class="career-bg absolute inset-0"></div>
       <div class="relative z-10 w-full max-w-lg px-4">
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-2xl font-black text-yellow-400">🗓️ CAREER MAP</h2>
-          <div id="career-stats-bar" class="text-sm text-gray-300 text-right"></div>
+          <h2 class="text-2xl font-black text-yellow-400"></h2>
+          <div id="career-stats-bar" class="text-sm text-gray-300 text-right">🌶️</div>
         </div>
         <div id="career-rpg-bar" class="mb-4 bg-gray-800 bg-opacity-80 rounded-xl p-3 flex gap-4 text-sm flex-wrap justify-center"></div>
         <div id="career-chapters" class="flex flex-col gap-3"></div>
@@ -45,13 +44,13 @@
     <div id="screen-upgrade" class="screen hidden flex-col items-center justify-center h-full">
       <div class="career-bg absolute inset-0"></div>
       <div class="relative z-10 w-full max-w-md px-4">
-        <h2 class="text-3xl font-black text-yellow-400 text-center mb-2">⬆️ LEVEL UP!</h2>
+        <h2 class="text-3xl font-black text-yellow-400 text-center mb-2">🔥</h2>
         <p id="upgrade-context" class="text-center text-gray-300 mb-4 text-sm"></p>
         <div id="upgrade-stat-bars" class="bg-gray-800 rounded-xl p-3 mb-4 text-sm space-y-2"></div>
         <div id="upgrade-choices" class="grid grid-cols-1 gap-3"></div>
         <div class="flex justify-between mt-4 text-sm text-gray-400">
           <span id="upgrade-stars-left">⭐ Stars: 0</span>
-          <button id="btn-upgrade-skip" class="text-gray-500 hover:text-gray-300 underline">Skip</button>
+          <button id="btn-upgrade-skip" class="text-gray-500 hover:text-gray-300 underline">🚫</button>
         </div>
       </div>
     </div>
@@ -63,7 +62,7 @@
         <div id="cutscene-icon" class="text-6xl mb-4"></div>
         <h2 id="cutscene-title" class="text-3xl font-black text-yellow-400 mb-3"></h2>
         <p id="cutscene-body" class="text-gray-200 text-lg leading-relaxed mb-6"></p>
-        <button id="btn-cutscene-next" class="px-8 py-3 bg-yellow-400 text-gray-900 font-black text-lg rounded-full hover:bg-yellow-300 transition-all">LET'S GO! 🏈</button>
+        <button id="btn-cutscene-next" class="px-8 py-3 bg-yellow-400 text-gray-900 font-black text-lg rounded-full hover:bg-yellow-300 transition-all">💯</button>
       </div>
     </div>
 
@@ -83,7 +82,7 @@
           </div>
           <div class="bg-black bg-opacity-60 rounded-lg px-3 py-1 text-sm font-bold text-right">
             <div id="hud-score" class="text-yellow-400">⭐ 0</div>
-            <div id="hud-health" class="text-red-400 text-xs">❤️ ❤️ ❤️</div>
+            <div id="hud-health" class="text-red-400 text-xs"> 🏈 🏈 🏈 </div>
           </div>
         </div>
         <div class="flex justify-center mt-1">
@@ -102,12 +101,12 @@
       <!-- TOUCH Controls -->
       <div id="touch-controls" class="absolute bottom-4 left-0 right-0 flex justify-between px-6 pointer-events-auto">
         <div class="flex gap-2">
-          <button class="touch-btn" data-dir="left">◀</button>
-          <button class="touch-btn" data-dir="right">▶</button>
+          <button class="touch-btn" data-dir="left">⬅️</button>
+          <button class="touch-btn" data-dir="right">➡️</button>
         </div>
         <div class="flex gap-2">
-          <button class="touch-btn" data-dir="up">⬆ Sprint</button>
-          <button class="touch-btn" data-dir="down">⬇</button>
+          <button class="touch-btn" data-dir="up">⬆️</button>
+          <button class="touch-btn" data-dir="down">⬇️</button>
         </div>
       </div>
     </div>
