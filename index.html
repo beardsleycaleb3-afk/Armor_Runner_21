@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>Armor_Runner_21</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body { margin:0; overflow:hidden; background:#000; height:100dvh; font-family:'Courier New', monospace; touch-action:none; user-select:none; display:flex; justify-content:center; align-items:center; }
+        .console { position:relative; width:100%; height:100%; max-width:600px; background:#111; display:flex; flex-direction:column; align-items:center; border-radius:15px; }
+        .monitor { position:relative; margin-top:20px; width:350px; height:350px; background:#000; border:10px solid #333; border-radius:4px; box-shadow:0 0 20px #ff6600; overflow:hidden; }
+        canvas { width:100%; height:100%; image-rendering:pixelated; }
+        .controls { flex:1; width:100%; max-width:400px; display:flex; justify-content:space-around; align-items:center; padding:20px; }
+        .dpad { display:grid; grid-template-columns:repeat(3,55px); gap:5px; }
+        .btn { background:#222; border:3px solid #444; color:#eee; display:flex; align-items:center; justify-content:center; cursor:pointer; font-weight:bold; border-radius:4px; }
+        .btn:active { background:#444; transform: scale(0.95); }
+        .round { border-radius:50%; width:35px; height:35px; font-size:18px; }
+        .square { width:35px; height:35px; }
+        .btn-y { border-color:#d32f2f !important; color:#f44336; } 
+        .btn-x { border-color:#1976d2 !important; color:#2196f3; } 
+        .btn-b { border-color:#fbc02d !important; color:#fbc02d; } 
+        .btn-a { border-color:#388e3c !important; color:#4caf50; } 
+        .hud { position:absolute; top:10px; left:10px; color:#0f0; font-size:12px; pointer-events:none; z-index:10; font-weight:bold; text-shadow:1px 1px #000; }
+    </style>
+</head>
+<body>
+
+<div class="console">
+    <div class="monitor">
+        <div class="hud" id="arHud"></div>
+        <canvas id="arCanvas"></canvas>
+    </div>
+    <div class="controls">
+        <div class="dpad">
+            <div></div><div class="btn square" id="btnUp">▲</div><div></div>
+            <div class="btn square" id="btnLeft">◀</div><div class="btn square" id="btnDown">▼</div><div class="btn square" id="btnRight">▶</div>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(2,60px); gap:10px;">
+            <div class="btn round btn-y" id="btnY">⚡</div>
+            <div class="btn round btn-x" id="btnX">💥</div>
+            <div class="btn round btn-b" id="btnB">🖕</div>
+            <div class="btn round btn-a" id="btnA">🕺</div>
+        </div>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById('arCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = 350; 
+canvas.height = 350;
+
+const SKEW_ANGLE = 45 * Math.PI / 180;
+const TILE_W = 70;
+const TILE_H = 170;
+const COLS = 5;
+const ROWS = 200;
+const LANES = [20, 90, 160, 230, 300];
+const DEPTH_SCALE = Math.cos(SKEW_ANGLE);
+const ROW_SPACING = 150;
+
+// ====================== SOUND EFFECTS (Web Audio API - NO extra files needed!) ======================
+let audioCtx;
+
+function initAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+}
+
+function playTone(startFreq, endFreq, duration, type = 'sine', volume = 0.3) {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    const osc = audioCtx.createOscillator();
+    osc.type = type;
+    osc.frequency.setValueAtTime(startFreq, now);
+    if (endFreq !== null && endFreq !== undefined) {
+        osc.frequency.exponentialRampToValueAtTime(endFreq, now + duration);
+    }
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    osc.connect(gain).connect(audioCtx.destination);
+    osc.start(now);
+    osc.stop(now + duration + 0.05);
+}
+
+function playNoise(duration, volume = 0.25, lowpass = 1200) {
+    if (!audioCtx) return;
+    const now = audioCtx.currentTime;
+    const bufferSize = Math.floor(audioCtx.sampleRate * duration);
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+    const noiseSource = audioCtx.createBufferSource();
+    noiseSource.buffer = buffer;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(lowpass, now);
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    noiseSource.connect(filter).connect(gain).connect(audioCtx.destination);
+    noiseSource.start(now);
+}
+
+function playSFX(type) {
+    initAudio(); // unlocks on first user tap (mobile safe)
+    switch (type) {
+        case 'start': // referee whistle
+            playTone(700, 1400, 0.7, 'sine', 0.25);
+            break;
+        case 'turbo': // engine boost whoosh
+            playTone(90, 420, 0.45, 'sawtooth', 0.35);
+            playNoise(0.3, 0.15, 800);
+            break;
+        case 'hurdle': // classic jump boing
+            playTone(220, 750, 0.1, 'triangle', 0.5);
+            playTone(750, 320, 0.18, 'sine', 0.35);
+            break;
+        case 'spin': // spinning whoosh
+            playNoise(0.35, 0.3, 2500);
+            playTone(520, 180, 0.25, 'sine', 0.2);
+            break;
+        case 'truck': // heavy truck impact
+            playNoise(0.18, 0.45, 500);
+            playTone(110, 70, 0.25, 'sawtooth', 0.55);
+            break;
+        case 'item': // shiny collectible ding
+            playTone(900, 1400, 0.06, 'triangle', 0.4);
+            setTimeout(() => playTone(1400, 1100, 0.12, 'sine', 0.3), 30);
+            break;
+        case 'powerup': // electric power zap
+            playTone(280, 1600, 0.22, 'sine', 0.3);
+            playNoise(0.18, 0.22, 3500);
+            break;
+        case 'smash': // defender smash
+            playNoise(0.14, 0.4, 700);
+            playTone(160, 90, 0.2, 'square', 0.45);
+            break;
+        case 'tackle': // painful tackle hit
+            playNoise(0.28, 0.55, 350);
+            playTone(85, 55, 0.32, 'sawtooth', 0.6);
+            break;
+        case 'touchdown': // victory fanfare
+            playTone(440, 660, 0.08, 'sine', 0.3);
+            setTimeout(() => playTone(660, 880, 0.08, 'sine', 0.3), 60);
+            setTimeout(() => playTone(880, 1100, 0.25, 'sine', 0.35), 120);
+            break;
+    }
+}
+
+/** FIXED ASSET MAP **/
+const spriteMap = {
+    hs: 'assets/runner/hs1.gif',
+    hsSpin: 'assets/runner/hs_invincible.gif',
+    hsHurdle: 'assets/runner/hurdle1.gif',
+    pro: 'assets/runner/pro_tuck1.gif',
+    proHurdle: 'assets/runner/hurdle_pro.gif',
+    down: 'assets/runner/down.png',
+    defenders: [
+        'assets/defenders/d1.png',
+        'assets/defenders/d2.jpeg',
+        'assets/defenders/d3.png',
+        'assets/defenders/d4.jpeg'
+    ],
+    powerup: 'assets/powerups/powerups.png',
+    item: 'assets/items/item.png',
+    backdrops: [
+        'assets/backdrops/1.jpeg', 'assets/backdrops/2.jpeg', 'assets/backdrops/3.jpeg',
+        'assets/backdrops/4.jpeg', 'assets/backdrops/5.jpeg', 'assets/backdrops/6.jpeg',
+        'assets/backdrops/7.jpeg', 'assets/backdrops/8.jpeg'
+    ],
+    endzones: [
+        'assets/endzones/endzone0.png', 'assets/endzones/endzone1.png', 'assets/endzones/endzone2.png',
+        'assets/endzones/endzone3.png', 'assets/endzones/endzone4.png', 'assets/endzones/endzone5.png',
+        'assets/endzones/endzone6.png', 'assets/endzones/endzone7.png'
+    ],
+    grass: [
+        'assets/grass/grass0.png', 'assets/grass/grass1.png', 'assets/grass/grass2.png',
+        'assets/grass/grass3.png', 'assets/grass/grass4.png', 'assets/grass/grass5.png',
+        'assets/grass/grass6.png', 'assets/grass/grass7.png', 'assets/grass/grass8.png'
+    ]
+};
+
+const sprites = {};
+function loadAssets() {
+    Object.keys(spriteMap).forEach(key => {
+        if (Array.isArray(spriteMap[key])) {
+            sprites[key] = spriteMap[key].map(src => {
+                const img = new Image();
+                img.src = src;
+                return img;
+            });
+        } else {
+            sprites[key] = new Image();
+            sprites[key].src = spriteMap[key];
+        }
+    });
+}
+loadAssets();
+
+/** GAME LOGIC **/
+let dbm = JSON.parse(localStorage.getItem('DBM_SAVE')) || { level:1, xp:0, era:'HS' };
+let gameState = 'MENU', worldY = 0, currentLane = 2, playerX = LANES[2];
+let turbo = false, spinning = false, hurdling = false, trucking = false, powerActive = false, isDown = false;
+let entities = [], grassScroll = 0;
+
+function generate() {
+    entities = []; 
+    const densities = [0.15, 0.15, 0.15, 0.22, 0.22, 0.22, 0.30, 0.30, 0.30];
+    const currentDensity = densities[dbm.level - 1] || 0.30;
+    dbm.era = dbm.level <= 3 ? 'HS' : (dbm.level <= 6 ? 'COLLEGE' : 'PRO');
+    
+    for (let row = 5; row < ROWS; row++) {
+        if (Math.random() < currentDensity) {
+            entities.push({
+                col: Math.floor(Math.random() * COLS),
+                row: row,
+                active: true,
+                type: Math.random() > 0.95 ? 'POWER' : (Math.random() > 0.90 ? 'ITEM' : 'DEFENDER'),
+                dIdx: Math.floor(Math.random() * 4)
+            });
+        }
+    }
+}
+
+function getSkewedPos(col, rowOffset) {
+    const depth = ROWS - rowOffset;
+    const scale = Math.max(0.1, DEPTH_SCALE * (1 - 0.003 * depth));
+    const skewX = Math.sin(SKEW_ANGLE) * (TILE_H - (rowOffset % TILE_H));
+    const x = 20 + col * TILE_W * scale + skewX * 0.3;
+    const y = 280 - rowOffset + (1 - scale) * 100;
+    const size = TILE_W * scale;
+    return {x, y, size};
+}
+
+function update() {
+    if (gameState !== 'RUN' || isDown) return;
+    let speed = turbo ? 10 : 5;
+    worldY += speed;
+    grassScroll = (grassScroll + speed) % TILE_H;
+
+    entities.forEach(e => {
+        if (!e.active) return;
+        const rowOffset = e.row * ROW_SPACING - worldY;
+        const pos = getSkewedPos(e.col, rowOffset);
+        if (pos.y > 250 && pos.y < 320 && Math.abs(pos.x - playerX) < 40) {
+            if (e.type === 'ITEM') { 
+                e.active = false; 
+                dbm.xp += 100; 
+                playSFX('item');
+            }
+            else if (e.type === 'POWER') { 
+                e.active = false; 
+                powerActive = true; 
+                playSFX('powerup');
+                setTimeout(() => powerActive = false, 5000); 
+            }
+            else if (spinning || trucking || powerActive) { 
+                e.active = false; 
+                dbm.xp += 25; 
+                playSFX('smash');
+            }
+            else if (!hurdling) {
+                isDown = true;
+                playSFX('tackle');
+                setTimeout(() => { 
+                    isDown = false; 
+                    worldY = 0; 
+                    generate(); 
+                }, 1200);
+            }
+        }
+    });
+
+    if (worldY > ROWS * ROW_SPACING) {
+        playSFX('touchdown');
+        dbm.level++;
+        if (dbm.level > 9) { 
+            gameState = 'MENU'; 
+            dbm.level = 1; 
+        } else { 
+            worldY = 0; 
+            generate(); 
+            localStorage.setItem('DBM_SAVE', JSON.stringify(dbm)); 
+        }
+    }
+    document.getElementById('arHud').innerHTML = `\( {dbm.era} LVL: \){dbm.level} XP:${dbm.xp} ${powerActive ? '⚡' : ''}`;
+}
+
+function draw() {
+    ctx.fillStyle = '#000'; 
+    ctx.fillRect(0, 0, 350, 350);
+    
+    let bg = sprites.backdrops[(dbm.level - 1) % 8];
+    if (bg && bg.complete) ctx.drawImage(bg, 0, 0, 350, 180);
+    
+    let gImg = sprites.grass[(dbm.level - 1) % 9];
+    if (gImg && gImg.complete) {
+        for (let col = 0; col < COLS; col++) {
+            for (let rowOffset = 0; rowOffset < 400; rowOffset += ROW_SPACING) {
+                const pos = getSkewedPos(col, rowOffset + grassScroll);
+                if (pos.y > -50 && pos.y < 400 && pos.size > 5) {
+                    ctx.save();
+                    ctx.translate(pos.x + pos.size / 2, pos.y + pos.size / 2);
+                    ctx.scale(pos.size / TILE_W, pos.size / TILE_W);
+                    ctx.rotate(SKEW_ANGLE * 0.1);
+                    ctx.drawImage(gImg, -TILE_W / 2, -TILE_H / 2, TILE_W, TILE_H);
+                    ctx.restore();
+                }
+            }
+        }
+    }
+
+    if (gameState === 'RUN') {
+        let ez = sprites.endzones[(dbm.level - 1) % 8];
+        let ezY = 280 - ((ROWS * ROW_SPACING) - worldY);
+        if (ezY > 150 && ez && ez.complete) ctx.drawImage(ez, 0, ezY, 350, 150);
+
+        entities.forEach(e => {
+            if (!e.active) return;
+            const rowOffset = e.row * ROW_SPACING - worldY;
+            const pos = getSkewedPos(e.col, rowOffset);
+            if (pos.y > -50 && pos.y < 400 && pos.size > 10) {
+                let img = (e.type === 'POWER') ? sprites.powerup : 
+                         (e.type === 'ITEM' ? sprites.item : sprites.defenders[e.dIdx]);
+                if (img && img.complete) {
+                    ctx.save();
+                    ctx.translate(pos.x, pos.y);
+                    ctx.scale(pos.size / 50, pos.size / 50);
+                    ctx.drawImage(img, -25, -25, 50, 50);
+                    ctx.restore();
+                }
+            }
+        });
+
+        let pSprite = isDown ? sprites.down : 
+                     ((spinning || powerActive) ? sprites.hsSpin : 
+                     (hurdling ? (dbm.era === 'HS' ? sprites.hsHurdle : sprites.proHurdle) : 
+                     (dbm.era === 'HS' ? sprites.hs : sprites.pro)));
+        const playerScale = 3;
+        if (pSprite && pSprite.complete) {
+            ctx.save();
+            ctx.translate(playerX, 260 + (hurdling ? -35 : (isDown ? 15 : 0)));
+            ctx.scale(playerScale, playerScale);
+            if (powerActive) ctx.filter = "drop-shadow(0 0 12px cyan) brightness(1.3)";
+            ctx.drawImage(pSprite, -32, -40, 64, 80);
+            ctx.restore();
+        }
+    } else {
+        ctx.fillStyle = "rgba(0,0,0,0.8)"; 
+        ctx.fillRect(0, 0, 350, 350);
+        ctx.fillStyle = "#fff"; 
+        ctx.textAlign = "center";
+        ctx.font = "bold 18px Courier New";
+        ctx.fillText("READY? PRESS Y", 175, 200);
+    }
+    requestAnimationFrame(draw);
+}
+
+const input = (id, down) => {
+    if (id === 'btnY' && down && gameState === 'MENU') { 
+        generate(); 
+        gameState = 'RUN'; 
+        playSFX('start');
+    }
+    if (gameState !== 'RUN' || isDown) return;
+
+    if (down) {
+        if (id === 'btnLeft' && currentLane > 0) { currentLane--; playerX = LANES[currentLane]; }
+        if (id === 'btnRight' && currentLane < 4) { currentLane++; playerX = LANES[currentLane]; }
+        if (id === 'btnB') { 
+            spinning = true; 
+            setTimeout(() => spinning = false, 500); 
+            playSFX('spin');
+        }
+        if (id === 'btnX') { 
+            hurdling = true; 
+            setTimeout(() => hurdling = false, 700); 
+            playSFX('hurdle');
+        }
+        if (id === 'btnA') { 
+            trucking = true; 
+            setTimeout(() => trucking = false, 400); 
+            playSFX('truck');
+        }
+        if (id === 'btnY') { 
+            turbo = true; 
+            playSFX('turbo');
+        }
+    } else { 
+        if (id === 'btnY') turbo = false; 
+    }
+};
+
+['btnLeft','btnRight','btnY','btnA','btnX','btnB'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('touchstart', e => { e.preventDefault(); input(id, true); });
+    el.addEventListener('touchend', e => { e.preventDefault(); input(id, false); });
+});
+
+setInterval(update, 1000 / 60); 
+draw();
+
+if ('serviceWorker' in navigator) { 
+    navigator.serviceWorker.register('sw.js'); 
+}
+</script>
+</body>
+</html>
