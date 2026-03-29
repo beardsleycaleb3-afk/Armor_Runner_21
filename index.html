@@ -374,6 +374,14 @@ setInterval(update, 1000/65);
 draw();
 loadAssets();
 updateHUD();
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js')
+            .then(reg => console.log('Armor Runner SW active:', reg))
+            .catch(err => console.log('SW reg failed:', err));
+    });
+}
+    
 </script>
 </body>
 </html>
