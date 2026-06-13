@@ -82,6 +82,7 @@ class Game {
         
         // Runner
         this.runner = null;
+        this.player = null; // Reference for modules
         this.currentLane = 1; // 0, 1, 2 (left, center, right)
         this.targetLane = 1;
         this.laneSwitchSmoothing = 0.15;
@@ -157,6 +158,7 @@ class Game {
         group.userData.direction = new THREE.Vector3(0, 0, -1);
         
         this.runner = group;
+        this.player = { mesh: group, shieldActive: false }; // For module access
         this.scene.add(group);
     }
     
@@ -248,6 +250,15 @@ class Game {
         this.modules.register('leaderboard', LeaderboardModule);
         this.modules.register('combo', ComboModule);
         this.modules.register('effects', VisualEffectsModule);
+        this.modules.register('audio', AudioModule);
+        this.modules.register('powerups', PowerUpModule);
+        this.modules.register('visual-polish', VisualPolishModule);
+        
+        // Initialize power-ups array
+        this.powerups = [];
+        this.magnetEndTime = 0;
+        this.speedBoostEndTime = 0;
+        this.baseSpeed = GAME_CONFIG.GAME_SPEED;
     }
     
     spawnGameElements() {
@@ -276,19 +287,36 @@ class Game {
         this.currentLane += (this.targetLane - this.currentLane) * this.laneSwitchSmoothing;
         this.runner.position.x = this.getLaneX(this.currentLane);
         
-        // Forward movement
-        this.runner.userData.speed = this.playerStats.speed;
-        this.runner.position.z -= this.runner.userData.speed;
+        // Forward movement with speed boost check
+        const now = Date.now();
+        let speed = this.playerStats.speed;
+        
+        // Apply speed boost if active
+        if (now < this.speedBoostEndTime) {
+            speed *= 1.5; // 50% faster
+        }
+        
+        this.runner.userData.speed = speed;
+        this.runner.position.z -= speed;
         
         // Update distance
-        this.distance += this.runner.userData.speed;
-        this.currentChapterDistance += this.runner.userData.speed;
+        this.distance += speed;
+        this.currentChapterDistance += speed;
     }
     
     updateCollectibles() {
+        const now = Date.now();
+        const isMagnetActive = now < this.magnetEndTime;
+        
         for (let i = this.collectibles.length - 1; i >= 0; i--) {
             const star = this.collectibles[i];
             star.rotation.y += star.rotationSpeed;
+            
+            // Magnet effect - pull collectibles toward player
+            if (isMagnetActive) {
+                const direction = this.runner.position.clone().sub(star.position).normalize();
+                star.position.add(direction.multiplyScalar(0.3)); // Pull speed
+            }
             
             // Remove if off-screen
             if (star.position.z > this.runner.position.z + 5) {
@@ -326,7 +354,19 @@ class Game {
             
             // Check collision with runner
             if (this.checkCollision(this.runner, obstacle)) {
-                const damage = Math.floor(obstacle.userData.damage * (2 - this.playerStats.dodge));
+                // Check for shield protection
+                let damage = Math.floor(obstacle.userData.damage * (2 - this.playerStats.dodge));
+                
+                if (this.player.shieldActive) {
+                    // Shield absorbs all damage
+                    this.player.shieldActive = false;
+                    if (this.player.shieldMesh) {
+                        this.scene.remove(this.player.shieldMesh);
+                        this.player.shieldMesh = null;
+                    }
+                    damage = 0;
+                }
+                
                 this.playerStats.hp -= damage;
                 
                 // Broadcast to modules
