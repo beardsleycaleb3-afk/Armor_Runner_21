@@ -2,7 +2,28 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, viewport-height=device-height">
+    <meta name="theme-color" content="#1a1a1a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Running Back Rising">
+    <meta name="apple-mobile-web-app-status-bar" content="black">
+    <meta name="application-name" content="Running Back Rising">
+    <meta name="msapplication-config" content="browserconfig.xml">
+    <meta name="msapplication-TileColor" content="#1a1a1a">
+    <meta name="description" content="A 3D segmented runner game with RPG progression. Play as a football running back rising through 10 chapters.">
+    <meta name="keywords" content="runner, game, RPG, 3D, football, mobile, touch">
+    <meta name="author" content="Running Back Rising">
+    <meta name="og:title" content="Running Back Rising - 3D RPG Runner">
+    <meta name="og:description" content="An exciting 3D runner game with RPG elements. Rise from high school to bowl champion!">
+    <meta name="og:image" content="assets/icon_192.jpg">
+    <meta name="og:type" content="game">
+    
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/x-icon" href="assets/icon_192.jpg">
+    <link rel="apple-touch-icon" href="assets/icon_192.jpg">
+    <link rel="shortcut icon" href="assets/icon_192.jpg">
+    
     <title>Running Back Rising - 3D RPG Runner</title>
     <style>
         * {
@@ -11,24 +32,38 @@
             box-sizing: border-box;
         }
 
+        html, body {
+            width: 100vw;
+            height: 100dvh;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+            touch-action: none;
+        }
+
         body {
             font-family: 'Arial', sans-serif;
             background: #1a1a1a;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
             color: #fff;
         }
 
         #gameContainer {
-            width: 350px;
-            height: 550px;
+            width: 100vw;
+            height: 100dvh;
+            max-width: 350px;
+            max-height: 550px;
             position: relative;
             background: #000;
             border: 3px solid #FFD700;
             box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
             overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         canvas {
@@ -258,5 +293,85 @@
     <script src="js/config.js"></script>
     <script src="js/modules.js"></script>
     <script src="js/game.js"></script>
+    
+    <!-- Service Worker Registration -->
+    <script>
+        // Register Service Worker for offline support and PWA installation
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then((registration) => {
+                        console.log('[PWA] Service Worker registered successfully:', registration);
+                        
+                        // Check for updates periodically
+                        setInterval(() => {
+                            registration.update();
+                        }, 60000); // Check every minute
+                    })
+                    .catch((error) => {
+                        console.log('[PWA] Service Worker registration failed:', error);
+                    });
+                
+                // Handle service worker updates
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    console.log('[PWA] New service worker activated');
+                });
+            });
+        }
+        
+        // Prompt installation on Android
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('[PWA] Install prompt ready');
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Show install button (optional - can add to UI)
+            // You could show a custom install button here
+        });
+        
+        // Handle app installation
+        window.addEventListener('appinstalled', () => {
+            console.log('[PWA] App installed successfully');
+            deferredPrompt = null;
+        });
+        
+        // Fullscreen helpers
+        function requestFullscreen() {
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(() => {
+                    console.log('[PWA] Fullscreen request denied');
+                });
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+            }
+        }
+        
+        // Request fullscreen on first interaction
+        document.addEventListener('touchstart', requestFullscreen, { once: true });
+        window.addEventListener('focus', () => {
+            // Re-request fullscreen when app regains focus
+            if (document.fullscreenElement === null) {
+                requestFullscreen();
+            }
+        });
+        
+        // Lock screen orientation to portrait
+        if (screen.orientation) {
+            screen.orientation.lock('portrait-primary')
+                .catch((error) => {
+                    console.log('[PWA] Orientation lock failed:', error);
+                });
+        }
+        
+        // Prevent accidental exit
+        window.addEventListener('beforeunload', (e) => {
+            if (game && game.gameState === 'playing') {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+    </script>
 </body>
 </html>
