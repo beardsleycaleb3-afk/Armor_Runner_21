@@ -78,7 +78,7 @@
         }
 
         /* Screens */
-        #mainMenu, #upgradeScreen, #gameOverScreen, #pauseScreen {
+        #mainMenu, #upgradeScreen, #gameOverScreen, #leaderboardScreen {
             position: absolute;
             top: 0;
             left: 0;
@@ -94,7 +94,7 @@
             text-align: center;
         }
 
-        #mainMenu.active, #upgradeScreen.active, #gameOverScreen.active, #pauseScreen.active {
+        #mainMenu.active, #upgradeScreen.active, #gameOverScreen.active, #leaderboardScreen.active {
             display: flex;
         }
 
@@ -205,6 +205,9 @@
             </div>
             <div class="hud-bottom">
                 <div id="meterInfo">Distance: <span id="distanceDisplay">0</span>m</div>
+                <div id="comboDisplay" style="display:none; color: #FFD700; font-size: 16px; margin-top: 5px;">
+                    🔥 COMBO x<span id="comboCount">0</span>
+                </div>
             </div>
         </div>
 
@@ -214,9 +217,10 @@
             <div style="font-size: 14px; color: #FFD700; margin-bottom: 30px;">3D RPG Runner</div>
             <div id="chapterInfo"></div>
             <div class="stat-display" id="playerStats"></div>
-            <div class="info-text">Touch left/right to switch lanes<br>Dodge obstacles, collect stars</div>
+            <div class="info-text">👆 Swipe left/right to dodge obstacles<br>⭐ Collect stars, avoid defenders</div>
             <div class="button-group">
                 <button onclick="game.startGame()">START GAME</button>
+                <button onclick="game.toggleLeaderboard()">TOP SCORES</button>
             </div>
         </div>
 
@@ -240,19 +244,19 @@
             </div>
         </div>
 
-        <!-- Pause Screen -->
-        <div id="pauseScreen">
-            <div class="menu-title">PAUSED</div>
-            <div class="info-text">Resume your run</div>
+        <!-- Leaderboard Screen -->
+        <div id="leaderboardScreen">
+            <div class="menu-title">Top Scores</div>
+            <div id="leaderboardContent"></div>
             <div class="button-group">
-                <button onclick="game.togglePause()">Resume</button>
-                <button onclick="game.showMainMenu()">Main Menu</button>
+                <button onclick="game.toggleLeaderboard()">Back</button>
             </div>
         </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="js/config.js"></script>
+    <script src="js/modules.js"></script>
     <script src="js/game.js"></script>
 </body>
 </html>

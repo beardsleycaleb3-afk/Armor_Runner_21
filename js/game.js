@@ -41,8 +41,7 @@ class Game {
         this.scene.add(directionalLight);
         
         // Game state
-        this.gameState = 'menu'; // 'menu', 'playing', 'pause', 'upgrade', 'gameover'
-        this.isPaused = false;
+        this.gameState = 'menu'; // 'menu', 'playing', 'upgrade', 'gameover'
         
         // Player stats (RPG elements)
         this.playerStats = {
@@ -97,12 +96,16 @@ class Game {
         this.spawnInterval = 30; // frames between spawns
         this.nextSegmentZ = 0;
         
+        // Module system
+        this.modules = new ModuleManager(this);
+        
         // Setup
         this.setupLights();
         this.createRunner();
         this.createGround();
         this.setupInputs();
         this.updateChapterInfo();
+        this.initializeModules();
         
         // Start animation loop
         this.animate();
@@ -209,19 +212,10 @@ class Game {
     }
     
     setupInputs() {
-        // Touch controls
-        this.container.addEventListener('touchstart', (e) => this.handleTouchStart(e));
-        this.container.addEventListener('touchend', (e) => this.handleTouchEnd(e));
-        this.container.addEventListener('touchmove', (e) => e.preventDefault());
-        
-        // Keyboard controls
-        document.addEventListener('keydown', (e) => {
-            this.keys[e.key] = true;
-            if (e.key === 'ArrowLeft') this.targetLane = Math.max(0, this.targetLane - 1);
-            if (e.key === 'ArrowRight') this.targetLane = Math.min(2, this.targetLane + 1);
-            if (e.key === ' ') this.togglePause();
-        });
-        document.addEventListener('keyup', (e) => this.keys[e.key] = false);
+        // Touch controls ONLY - mobile-first design
+        this.container.addEventListener('touchstart', (e) => this.handleTouchStart(e), false);
+        this.container.addEventListener('touchend', (e) => this.handleTouchEnd(e), false);
+        this.container.addEventListener('touchmove', (e) => e.preventDefault(), false);
     }
     
     handleTouchStart(e) {
@@ -246,6 +240,14 @@ class Game {
                 this.targetLane = Math.max(0, this.targetLane - 1);
             }
         }
+    }
+    
+    initializeModules() {
+        // Register all game modules
+        this.modules.register('particles', ParticleEffect);
+        this.modules.register('leaderboard', LeaderboardModule);
+        this.modules.register('combo', ComboModule);
+        this.modules.register('effects', VisualEffectsModule);
     }
     
     spawnGameElements() {
@@ -301,6 +303,10 @@ class Game {
                 this.score += value;
                 this.chapterStarsCollected += value;
                 this.playerStats.totalStars += value;
+                
+                // Broadcast to modules
+                this.modules.broadcast('onCollectible', star);
+                
                 this.scene.remove(star);
                 this.collectibles.splice(i, 1);
             }
@@ -322,6 +328,10 @@ class Game {
             if (this.checkCollision(this.runner, obstacle)) {
                 const damage = Math.floor(obstacle.userData.damage * (2 - this.playerStats.dodge));
                 this.playerStats.hp -= damage;
+                
+                // Broadcast to modules
+                this.modules.broadcast('onObstacleHit', obstacle);
+                
                 this.scene.remove(obstacle);
                 this.obstacles.splice(i, 1);
                 
@@ -369,7 +379,6 @@ class Game {
     startGame() {
         this.hideAllMenus();
         this.gameState = 'playing';
-        this.isPaused = false;
         
         // Reset for new chapter
         this.score = 0;
@@ -392,6 +401,9 @@ class Game {
         this.targetLane = 1;
         this.nextSegmentZ = 0;
         this.spawnTimer = 0;
+        
+        // Broadcast to modules
+        this.modules.broadcast('onGameStart');
     }
     
     endChapter(success) {
@@ -401,6 +413,9 @@ class Game {
             // Calculate rewards
             const bonusStars = Math.floor(this.chapterStarsCollected * 1.5);
             this.playerStats.totalStars += bonusStars;
+            
+            // Broadcast to modules
+            this.modules.broadcast('onChapterComplete');
             
             // Advance to next chapter
             if (this.playerStats.chapter < 10) {
@@ -463,17 +478,6 @@ class Game {
         }
     }
     
-    togglePause() {
-        if (this.gameState === 'playing') {
-            this.isPaused = !this.isPaused;
-            if (this.isPaused) {
-                document.getElementById('pauseScreen').classList.add('active');
-            } else {
-                document.getElementById('pauseScreen').classList.remove('active');
-            }
-        }
-    }
-    
     showMainMenu() {
         this.hideAllMenus();
         this.gameState = 'menu';
@@ -485,11 +489,32 @@ class Game {
         document.getElementById('mainMenu').classList.remove('active');
         document.getElementById('upgradeScreen').classList.remove('active');
         document.getElementById('gameOverScreen').classList.remove('active');
-        document.getElementById('pauseScreen').classList.remove('active');
+        document.getElementById('leaderboardScreen').classList.remove('active');
+    }
+    
+    toggleLeaderboard() {
+        const leaderboard = document.getElementById('leaderboardScreen');
+        const main = document.getElementById('mainMenu');
+        
+        if (leaderboard.classList.contains('active')) {
+            leaderboard.classList.remove('active');
+            main.classList.add('active');
+        } else {
+            main.classList.remove('active');
+            leaderboard.classList.add('active');
+            this.updateLeaderboardDisplay();
+        }
+    }
+    
+    updateLeaderboardDisplay() {
+        const leaderboardModule = this.modules.getModule('leaderboard');
+        if (leaderboardModule) {
+            document.getElementById('leaderboardContent').innerHTML = leaderboardModule.getStatsHtml();
+        }
     }
     
     update() {
-        if (this.gameState !== 'playing' || this.isPaused) {
+        if (this.gameState !== 'playing') {
             this.renderer.render(this.scene, this.camera);
             return;
         }
@@ -498,6 +523,9 @@ class Game {
         this.spawnGameElements();
         this.updateCollectibles();
         this.updateObstacles();
+        
+        // Update all modules
+        this.modules.update();
         
         // Check chapter goal
         const chapter = this.chapterGoals[this.playerStats.chapter - 1];
