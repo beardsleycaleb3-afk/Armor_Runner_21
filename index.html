@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, maximum-scale=1">
+    <meta name="theme-color" content="#1a4d2e">
+    <meta name="description" content="A 3D segmented runner game with RPG progression. Play as a football running back rising through 10 chapters.">
+    <meta name="keywords" content="runner, game, RPG, 3D, football, mobile, touch, android">
+    <meta name="author" content="Running-Back-Rising">
+    
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" type="image/jpeg" href="./assets/icon_192.jpg">
+    <link rel="shortcut icon" href="./assets/icon_192.jpg">
+    
+    <title>Running-Back-Rising</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            touch-action: none;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            position: fixed;
+        }
+
+        body {
+            font-family: 'Roboto', 'Arial', sans-serif;
+            background: #1a4d2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+        }
+
+        #gameContainer {
+            width: 100vw;
+            height: 100dvh;
+            max-width: 350px;
+            max-height: 550px;
+            position: relative;
+            background: #000;
+            border: 3px solid #FFD700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .hud-top {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        .stat-box {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 5px 10px;
+            border: 1px solid #FFD700;
+            border-radius: 4px;
+        }
+
+        .hud-bottom {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            text-align: center;
+            font-size: 12px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        #chapterInfo {
+            position: absolute;
+            top: 40px;
+            left: 10px;
+            right: 10px;
+            color: white;
+            font-size: 12px;
+            text-align: center;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 4px;
+            border-radius: 4px;
+            z-index: 10;
+        }
+
+        #playerStats {
+            position: absolute;
+            bottom: 40px;
+            left: 10px;
+            color: white;
+            font-size: 11px;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px;
+            border-radius: 4px;
+            z-index: 10;
+        }
+
+        #mainMenu, #upgradeScreen, #gameOverScreen, #leaderboardScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            pointer-events: auto;
+            text-align: center;
+        }
+
+        #mainMenu.active, #upgradeScreen.active, #gameOverScreen.active, #leaderboardScreen.active {
+            display: flex;
+        }
+
+        .menu-title {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #FFD700;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.9);
+        }
+
+        .menu-content {
+            max-height: 70%;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            width: 90%;
+        }
+
+        .stat-upgrade {
+            background: rgba(50, 50, 50, 0.8);
+            border: 1px solid #666;
+            padding: 10px;
+            margin: 8px 0;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .stat-upgrade.disabled {
+            opacity: 0.5;
+        }
+
+        .stat-upgrade button {
+            background: #00aaff;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .stat-upgrade button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        button {
+            background: #FFD700;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s;
+            pointer-events: auto;
+        }
+
+        button:hover {
+            background: #FFF;
+            transform: scale(1.05);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .info-text {
+            font-size: 12px;
+            color: #ccc;
+            margin: 10px 0;
+            line-height: 1.4;
+        }
+
+        .stat-display {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .stat-item {
+            background: rgba(30, 30, 30, 0.8);
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .stat-item strong {
+            color: #FFD700;
+        }
+
+        #leaderboardContent {
+            max-width: 300px;
+            max-height: 350px;
+            overflow-y: auto;
+            text-align: left;
+            font-size: 12px;
+        }
+
+        .leaderboard-row {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            margin: 4px 0;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="hud">
+            <div class="hud-top">
+                <div class="stat-box">Score: <span id="scoreDisplay">0</span></div>
+                <div class="stat-box">⭐ <span id="starDisplay">0</span></div>
+                <div class="stat-box">HP: <span id="hpDisplay">100</span></div>
+            </div>
+            <div class="hud-bottom">
+                <div id="meterInfo">Distance: <span id="distanceDisplay">0</span>m</div>
+                <div id="comboDisplay" style="display:none; color: #FFD700; font-size: 16px; margin-top: 5px;">
+                    🔥 COMBO x<span id="comboCount">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="chapterInfo">Chapter 1: High School Freshman (Era 1)</div>
+        
+        <div id="playerStats">
+            <div class="stat-item"><strong>HP:</strong> 100</div>
+            <div class="stat-item"><strong>Speed:</strong> 30%</div>
+            <div class="stat-item"><strong>Dodge:</strong> 100%</div>
+            <div class="stat-item"><strong>Stars:</strong> 0</div>
+        </div>
+
+        <div id="mainMenu" class="active">
+            <div class="menu-title">Running Back Rising</div>
+            <div style="font-size: 14px; color: #FFD700; margin-bottom: 30px;">3D RPG Runner</div>
+            <div id="chapterInfoMenu"></div>
+            <div class="stat-display" id="playerStatsMenu"></div>
+            <div class="info-text">👆 Swipe left/right to dodge obstacles<br>⭐ Collect stars, avoid defenders</div>
+            <div class="button-group">
+                <button onclick="game.startGame()">START GAME</button>
+                <button onclick="game.toggleLeaderboard()">TOP SCORES</button>
+            </div>
+        </div>
+
+        <div id="upgradeScreen">
+            <div class="menu-title">Upgrade Stats</div>
+            <div class="info-text" id="upgradeInfo"></div>
+            <div class="menu-content" id="upgradeOptions"></div>
+            <div class="button-group">
+                <button onclick="game.startGame()">Next Chapter</button>
+            </div>
+        </div>
+
+        <div id="gameOverScreen">
+            <div class="menu-title">Chapter Failed</div>
+            <div class="info-text" id="gameOverStats"></div>
+            <div class="button-group">
+                <button onclick="game.showMainMenu()">Main Menu</button>
+                <button onclick="game.startGame()">Retry Chapter</button>
+            </div>
+        </div>
+
+        <div id="leaderboardScreen">
+            <div class="menu-title">Top Scores</div>
+            <div id="leaderboardContent"></div>
+            <div class="button-group">
+                <button onclick="game.toggleLeaderboard()">Back</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="./js/config.js"></script>
+    <script src="./js/modules.js"></script>
+    <script src="./js/audio.js"></script>
+    <script src="./js/powerups.js"></script>
+    <script src="./js/visual-polish.js"></script>
+    <script src="./js/game.js"></script>
+    
+    <script>
+        let game;
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeGame);
+        } else {
+            initializeGame();
+        }
+        
+        function initializeGame() {
+            try {
+                console.log('[Game] Initializing Running Back Rising...');
+                game = new Game();
+                console.log('[Game] ✅ Game initialized successfully');
+            } catch (error) {
+                console.error('[Game] ❌ Failed to initialize game:', error);
+                alert('Failed to start game. Please refresh the page.');
+            }
+        }
+        
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then((registration) => {
+                        console.log('[PWA] Service Worker registered successfully:', registration);
+                        setInterval(() => {
+                            registration.update().then(() => {
+                                if (registration.waiting) {
+                                    console.log('[PWA] Update available');
+                                }
+                            });
+                        }, 60000);
+                    })
+                    .catch((error) => {
+                        console.log('[PWA] Service Worker registration failed:', error);
+                    });
+                
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    console.log('[PWA] New service worker activated');
+                });
+                
+                navigator.serviceWorker.addEventListener('message', (event) => {
+                    if (event.data && event.data.type === 'SW_READY') {
+                        console.log('[PWA] Service Worker ready for offline use');
+                    }
+                });
+            });
+        }
+        
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('[PWA] Install prompt ready');
+            e.preventDefault();
+            deferredPrompt = e;
+        });
+        
+        window.addEventListener('appinstalled', () => {
+            console.log('[PWA] App installed successfully');
+            deferredPrompt = null;
+        });
+        
+        function requestFullscreen() {
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen().catch(() => {
+                    console.log('[PWA] Fullscreen denied');
+                });
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+            }
+        }
+        
+        document.addEventListener('touchstart', requestFullscreen, { once: true });
+        window.addEventListener('focus', () => {
+            if (document.fullscreenElement === null) {
+                requestFullscreen();
+            }
+        });
+        
+        if (screen.orientation) {
+            screen.orientation.lock('portrait-primary')
+                .catch((error) => {
+                    console.log('[PWA] Orientation lock failed:', error);
+                });
+        }
+        
+        window.addEventListener('beforeunload', (e) => {
+            if (game && game.gameState === 'playing') {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+    </script>
+</body>
+</html>
